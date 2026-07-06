@@ -1,14 +1,14 @@
 package db
 
 import (
-	"log"
 	"panel/config"
+	"panel/logger"
 	"panel/model"
 
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
+	gormLogger "gorm.io/gorm/logger"
 )
 
 var DB *gorm.DB
@@ -16,10 +16,10 @@ var DB *gorm.DB
 func Init() {
 	var err error
 	DB, err = gorm.Open(sqlite.Open(config.DBPath+"?_journal_mode=WAL&_foreign_keys=ON"), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Silent),
+		Logger: gormLogger.Default.LogMode(gormLogger.Silent),
 	})
 	if err != nil {
-		log.Fatalf("打开数据库失败: %v", err)
+		logger.Fatal("打开数据库失败", "error", err)
 	}
 
 	// 自动迁移表结构
@@ -39,16 +39,16 @@ func runMigrations() {
 		&model.UserSettings{},
 	)
 	if err != nil {
-		log.Printf("[迁移] 自动迁移失败: %v", err)
+		logger.Error("自动迁移失败", "error", err)
 	}
-	log.Println("[迁移] 表结构迁移完成")
+	logger.Info("表结构迁移完成")
 }
 
 func initDefaultData() {
 	var count int64
 	DB.Model(&model.User{}).Count(&count)
 	if count == 0 {
-		log.Println("初始化默认用户和书签数据...")
+		logger.Info("初始化默认用户和书签数据...")
 
 		adminHash, _ := bcrypt.GenerateFromPassword([]byte("admin123"), bcrypt.DefaultCost)
 		guestHash, _ := bcrypt.GenerateFromPassword([]byte("guest"), bcrypt.DefaultCost)
@@ -154,6 +154,6 @@ func initDefaultData() {
 		}
 		DB.Create(&bookmarks6)
 
-		log.Println("默认数据初始化完成")
+		logger.Info("默认数据初始化完成")
 	}
 }

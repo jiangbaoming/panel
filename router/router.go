@@ -16,6 +16,7 @@ func Setup() *gin.Engine {
 	r := gin.New()
 	r.MaxMultipartMemory = 100 << 20 // 100MB
 	r.Use(gin.Recovery())
+	r.Use(middleware.Logger())
 
 	// CORS
 	r.Use(cors.New(cors.Config{
