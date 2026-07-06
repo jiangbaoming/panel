@@ -1,5 +1,5 @@
 <template>
-  <el-dialog title="选择图片" v-model="visible" width="600px">
+  <el-dialog title="选择图片" v-model="dialogVisible" width="600px">
     <div class="img-picker">
       <div class="img-picker-toolbar">
         <el-upload
@@ -25,20 +25,25 @@
       </div>
     </div>
     <template #footer>
-      <el-button @click="visible = false">取消</el-button>
+      <el-button @click="dialogVisible = false">取消</el-button>
       <el-button type="primary" :disabled="!selected" @click="confirm">选择</el-button>
     </template>
   </el-dialog>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { getImages, uploadImage } from '@/api'
 import { ElMessage } from 'element-plus'
 import { Upload } from '@element-plus/icons-vue'
 
 const props = defineProps({ visible: Boolean })
 const emit = defineEmits(['update:visible', 'select'])
+
+const dialogVisible = computed({
+  get: () => props.visible,
+  set: (v) => emit('update:visible', v)
+})
 
 const images = ref([])
 const loading = ref(false)
@@ -77,8 +82,8 @@ function select(url) {
 function confirm() {
   if (selected.value) {
     emit('select', selected.value)
-    emit('update:visible', false)
   }
+  dialogVisible.value = false
 }
 </script>
 

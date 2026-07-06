@@ -1,5 +1,5 @@
 <template>
-  <el-dialog title="用户管理" v-model="visible" width="500px" :close-on-click-modal="false">
+  <el-dialog title="用户管理" v-model="dialogVisible" width="500px" :close-on-click-modal="false">
     <div v-loading="loading">
       <el-table :data="users" size="small" style="width:100%">
         <el-table-column label="头像" width="60">
@@ -38,13 +38,18 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { getUsers, createUser, deleteUser } from '@/api'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 
 const props = defineProps({ visible: Boolean })
 const emit = defineEmits(['update:visible'])
+
+const dialogVisible = computed({
+  get: () => props.visible,
+  set: (v) => emit('update:visible', v)
+})
 
 const users = ref([])
 const loading = ref(false)

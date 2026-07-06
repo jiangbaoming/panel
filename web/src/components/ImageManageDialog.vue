@@ -1,5 +1,5 @@
 <template>
-  <el-dialog title="图库管理" v-model="visible" width="700px" :close-on-click-modal="false">
+  <el-dialog title="图库管理" v-model="dialogVisible" width="700px" :close-on-click-modal="false">
     <div class="img-mgr">
       <div class="img-mgr-toolbar">
         <el-upload
@@ -36,13 +36,18 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { getImages, uploadImage, uploadZip, deleteImage } from '@/api'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Upload, FolderOpened } from '@element-plus/icons-vue'
 
 const props = defineProps({ visible: Boolean })
 const emit = defineEmits(['update:visible'])
+
+const dialogVisible = computed({
+  get: () => props.visible,
+  set: (v) => emit('update:visible', v)
+})
 
 const images = ref([])
 const loading = ref(false)

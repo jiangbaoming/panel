@@ -1,7 +1,7 @@
 <template>
   <el-dialog
     :title="editData ? '编辑分组' : '新建分组'"
-    v-model="visible"
+    v-model="dialogVisible"
     width="400px"
     :close-on-click-modal="false"
     @closed="resetForm"
@@ -17,14 +17,14 @@
       </el-form-item>
     </el-form>
     <template #footer>
-      <el-button @click="visible = false">取消</el-button>
+      <el-button @click="dialogVisible = false">取消</el-button>
       <el-button type="primary" :loading="loading" @click="handleSave">保存</el-button>
     </template>
   </el-dialog>
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useBookmarksStore } from '@/stores/bookmarks'
 
@@ -33,6 +33,11 @@ const props = defineProps({
   editData: { type: Object, default: null }
 })
 const emit = defineEmits(['update:visible', 'saved'])
+
+const dialogVisible = computed({
+  get: () => props.visible,
+  set: (v) => emit('update:visible', v)
+})
 
 const bookmarksStore = useBookmarksStore()
 const formRef = ref(null)
@@ -53,7 +58,7 @@ async function handleSave() {
       await bookmarksStore.addGroup(form.name, form.icon)
     }
     ElMessage.success(props.editData ? '已更新' : '已创建')
-    emit('update:visible', false)
+    dialogVisible.value = false
     emit('saved')
   } catch (e) {
     ElMessage.error(e.response?.data?.error || '保存失败')

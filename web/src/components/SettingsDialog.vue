@@ -1,5 +1,5 @@
 <template>
-  <el-dialog title="页面设置" v-model="visible" width="480px" @closed="fetchSettings">
+  <el-dialog title="页面设置" v-model="dialogVisible" width="480px" @closed="fetchSettings">
     <el-form label-width="90px">
       <el-form-item label="页面标题">
         <el-input v-model="local.title" placeholder="个人导航页" />
@@ -24,7 +24,7 @@
       </el-form-item>
     </el-form>
     <template #footer>
-      <el-button @click="visible = false">取消</el-button>
+      <el-button @click="dialogVisible = false">取消</el-button>
       <el-button type="primary" :loading="loading" @click="handleSave">保存</el-button>
     </template>
     <!-- 图片选择弹窗 -->
@@ -33,7 +33,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, watch } from 'vue'
+import { ref, reactive, watch, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
@@ -47,6 +47,11 @@ const settings = useSettingsStore()
 const loading = ref(false)
 const pickerVisible = ref(false)
 const pickTarget = ref('bg')
+
+const dialogVisible = computed({
+  get: () => props.visible,
+  set: (v) => emit('update:visible', v)
+})
 
 const local = reactive({ title: '', bgImage: '', favicon: '' })
 
@@ -81,7 +86,7 @@ async function handleSave() {
       page_favicon: local.favicon
     })
     ElMessage.success('已保存')
-    emit('update:visible', false)
+    dialogVisible.value = false
   } catch (e) {
     ElMessage.error('保存失败')
   } finally {
