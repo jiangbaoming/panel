@@ -90,13 +90,37 @@ async function handleLogin() {
   align-items: center;
   justify-content: center;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  position: relative;
+  overflow: hidden;
+}
+.login-page::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle at 30% 50%, rgba(255,255,255,0.08) 0%, transparent 50%),
+              radial-gradient(circle at 70% 50%, rgba(255,255,255,0.05) 0%, transparent 50%);
+  animation: loginBgFloat 20s ease-in-out infinite;
+}
+@keyframes loginBgFloat {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(-2%, 1%); }
 }
 .login-card {
   background: #fff;
   border-radius: 20px;
   padding: 40px;
   width: 380px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 24px 80px rgba(0,0,0,0.2);
+  position: relative;
+  z-index: 1;
+  animation: cardSlideUp 0.5s ease;
+}
+@keyframes cardSlideUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 .login-header {
   text-align: center;
@@ -105,6 +129,12 @@ async function handleLogin() {
 .login-icon {
   font-size: 48px;
   margin-bottom: 12px;
+  display: inline-block;
+  animation: iconBounce 2s ease-in-out infinite;
+}
+@keyframes iconBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
 }
 .login-header h1 {
   font-size: 24px;

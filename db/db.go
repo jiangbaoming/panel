@@ -30,7 +30,8 @@ func Init() {
 }
 
 func runMigrations() {
-	// 迁移所有模型
+	DB.Exec("PRAGMA foreign_keys = OFF")
+
 	err := DB.AutoMigrate(
 		&model.User{},
 		&model.Group{},
@@ -38,6 +39,9 @@ func runMigrations() {
 		&model.Image{},
 		&model.UserSettings{},
 	)
+
+	DB.Exec("PRAGMA foreign_keys = ON")
+
 	if err != nil {
 		logger.Error("自动迁移失败", "error", err)
 	}

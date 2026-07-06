@@ -1,41 +1,54 @@
 <template>
   <div class="group-section">
-    <div class="group-header">
+    <div class="group-header" :class="{ 'is-editable': editMode }">
       <div class="group-title">
         <span class="group-icon">{{ group.icon || '📁' }}</span>
         <h2 class="group-name">{{ group.name }}</h2>
         <span class="group-count">{{ group.bookmarks?.length || 0 }} 个</span>
-        <div class="group-actions">
-          <el-button text @click="editGroup" title="编辑分组">
-            <el-icon><Edit /></el-icon>
+        <div v-if="editMode" class="group-actions">
+          <el-button text size="small" @click="addBookmark" title="添加书签">
+            <el-icon :size="14"><Plus /></el-icon>
           </el-button>
-          <el-button text @click="deleteGroup" title="删除分组" type="danger">
-            <el-icon><Delete /></el-icon>
+          <el-button text size="small" @click="editGroup" title="编辑分组">
+            <el-icon :size="14"><Edit /></el-icon>
+          </el-button>
+          <el-button text size="small" @click="deleteGroup" title="删除分组" type="danger">
+            <el-icon :size="14"><Delete /></el-icon>
           </el-button>
         </div>
       </div>
-      <el-button size="small" :icon="Plus" @click="addBookmark">添加书签</el-button>
     </div>
-    <div class="bookmark-grid">
-      <draggable
-        :list="group.bookmarks"
-        item-key="id"
-        group="bookmarks"
-        handle=".bookmark-card"
-        ghost-class="ghost"
-        :on-end="onDragEnd"
-      >
-        <template #item="{ element }">
-          <div>
-            <BookmarkCard
-              :bookmark="element"
-              @edit="openEdit(element)"
-              @pin="handlePin(element)"
-              @delete="handleDelete(element)"
-            />
-          </div>
-        </template>
-      </draggable>
+    <draggable
+      v-if="editMode"
+      class="bookmark-grid"
+      :list="group.bookmarks"
+      item-key="id"
+      tag="div"
+      group="bookmarks"
+      handle=".bookmark-row"
+      ghost-class="ghost"
+      @end="onDragEnd"
+    >
+      <template #item="{ element }">
+        <BookmarkCard
+          :bookmark="element"
+          :edit-mode="editMode"
+          @edit="openEdit(element)"
+          @pin="handlePin(element)"
+          @delete="handleDelete(element)"
+        />
+      </template>
+    </draggable>
+    <div v-else class="bookmark-grid">
+      <BookmarkCard
+        v-for="bm in group.bookmarks"
+        :key="bm.id"
+        :bookmark="bm"
+        :edit-mode="editMode"
+        @edit="openEdit(bm)"
+        @pin="handlePin(bm)"
+        @delete="handleDelete(bm)"
+      />
     </div>
     <!-- 新建/编辑书签弹窗 -->
     <BookmarkFormDialog
@@ -57,9 +70,10 @@ import BookmarkCard from './BookmarkCard.vue'
 import BookmarkFormDialog from './BookmarkFormDialog.vue'
 
 const props = defineProps({
-  group: { type: Object, required: true }
+  group: { type: Object, required: true },
+  editMode: { type: Boolean, default: false }
 })
-const emit = defineEmits(['refresh'])
+const emit = defineEmits(['refresh', 'edit-group', 'bookmarks-reordered'])
 
 const bookmarksStore = useBookmarksStore()
 const formVisible = ref(false)
@@ -105,28 +119,32 @@ async function deleteGroup() {
 }
 
 function editGroup() {
-  // 由父组件处理
+  emit('edit-group', props.group)
 }
 
-async function onDragEnd() {
-  try {
-    const ids = props.group.bookmarks.map(b => String(b.id))
-    await bookmarksStore.sortBookmarks(props.group.id, ids)
-  } catch (e) {
-    ElMessage.error('排序保存失败')
-  }
+function onDragEnd() {
+  const ids = props.group.bookmarks.map(b => String(b.id))
+  emit('bookmarks-reordered', { groupId: props.group.id, ids })
 }
 </script>
 
 <style scoped>
 .group-section {
   margin-bottom: 32px;
+  padding: 24px;
 }
+
 .group-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 16px;
+}
+.group-header.is-editable {
+  cursor: grab;
+}
+.group-header.is-editable:active {
+  cursor: grabbing;
 }
 .group-title {
   display: flex;
@@ -136,31 +154,73 @@ async function onDragEnd() {
 .group-icon {
   font-size: 22px;
   line-height: 1;
+  transition: transform var(--transition-fast);
+}
+.group-section:hover .group-icon {
+  transform: scale(1.1);
 }
 .group-name {
   font-size: 17px;
   font-weight: 600;
-  color: #1d1d1f;
+  color: var(--color-text-primary);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 .group-count {
   font-size: 12px;
-  color: #86868b;
+  color: var(--color-text-secondary);
+  padding: 2px 8px;
+  border-radius: 10px;
 }
 .group-actions {
   display: flex;
-  gap: 2px;
-  opacity: 0;
-  transition: opacity 0.2s;
+  gap: 4px;
 }
-.group-title:hover .group-actions {
-  opacity: 1;
+.group-actions .el-button {
+  width: 24px;
+  height: 24px;
+  min-height: 24px;
+  color: rgba(255, 255, 255, 0.55);
+  background: transparent;
+  border: none;
+}
+.group-actions .el-button:hover {
+  color: rgba(255, 255, 255, 0.92);
+  background: transparent;
+}
+.group-actions .el-button--danger {
+  color: rgba(255, 100, 100, 0.65);
+}
+.group-actions .el-button--danger:hover {
+  color: rgba(255, 100, 100, 0.95);
+}
+.group-actions .el-button .el-icon {
+  margin: 0;
 }
 .bookmark-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 8px;
 }
 .ghost {
   opacity: 0.4;
+}
+
+@media (max-width: 768px) {
+  .group-section {
+    padding: 12px 0;
+    margin-bottom: 20px;
+  }
+  .group-header {
+    margin-bottom: 10px;
+  }
+  .group-name {
+    font-size: 15px;
+  }
+  .group-icon {
+    font-size: 18px;
+  }
+  .bookmark-grid {
+    gap: 6px;
+  }
 }
 </style>

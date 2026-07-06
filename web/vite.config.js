@@ -10,14 +10,15 @@ export default defineConfig({
     }
   },
   server: {
+    host: '0.0.0.0',
     port: 3000,
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
+        target: 'http://localhost:5678',
         changeOrigin: true
       },
       '/uploads': {
-        target: 'http://localhost:8080',
+        target: 'http://localhost:5678',
         changeOrigin: true
       }
     }

@@ -2,8 +2,9 @@
   <el-dialog
     :title="editData ? '编辑分组' : '新建分组'"
     v-model="dialogVisible"
-    width="400px"
+    width="480px"
     :close-on-click-modal="false"
+    append-to-body
     @closed="resetForm"
   >
     <el-form ref="formRef" :model="form" :rules="rules" label-width="60px">
@@ -11,9 +12,7 @@
         <el-input v-model="form.name" placeholder="分组名称" />
       </el-form-item>
       <el-form-item label="图标">
-        <el-input v-model="form.icon" placeholder="Emoji 图标">
-          <template #prepend><span style="font-size:18px">{{ form.icon || '📁' }}</span></template>
-        </el-input>
+        <IconPicker v-model="form.icon" default-icon="📁" />
       </el-form-item>
     </el-form>
     <template #footer>
@@ -27,6 +26,7 @@
 import { ref, reactive, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useBookmarksStore } from '@/stores/bookmarks'
+import IconPicker from './IconPicker.vue'
 
 const props = defineProps({
   visible: Boolean,

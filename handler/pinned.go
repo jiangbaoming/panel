@@ -21,7 +21,7 @@ func GetPinned(c *gin.Context) {
 	var pinned []model.PinnedBookmark
 	err := db.DB.Table("bookmarks b").
 		Select("b.id, b.name, b.url, b.icon, b.bg_color, b.icon_bg, g.name as group_name").
-		Joins("JOIN groups_t g ON b.group_id = g.id").
+		Joins("JOIN groups g ON b.group_id = g.id").
 		Where("b.pinned = ? AND b.user_id = ?", 1, user.ID).
 		Order("b.sort ASC").
 		Scan(&pinned).Error
@@ -30,6 +30,9 @@ func GetPinned(c *gin.Context) {
 		return
 	}
 
+	if pinned == nil {
+		pinned = []model.PinnedBookmark{}
+	}
 	c.JSON(http.StatusOK, pinned)
 }
 

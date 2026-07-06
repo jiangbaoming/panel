@@ -37,11 +37,12 @@ func UpdateSettings(c *gin.Context) {
 	userID, _ := strconv.Atoi(c.Param("userId"))
 
 	var req struct {
-		BgImage     string `json:"bg_image"`
-		DisplayMode string `json:"display_mode"`
-		PageTitle   string `json:"page_title"`
-		PageFavicon string `json:"page_favicon"`
-		Footer      string `json:"footer"`
+		BgImage        string `json:"bg_image"`
+		DisplayMode    string `json:"display_mode"`
+		PageTitle      string `json:"page_title"`
+		PageFavicon    string `json:"page_favicon"`
+		Footer         string `json:"footer"`
+		WelcomeMessage string `json:"welcome_message"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -56,12 +57,13 @@ func UpdateSettings(c *gin.Context) {
 	if err != nil {
 		// 插入
 		settings = model.UserSettings{
-			UserID:      userID,
-			BgImage:     req.BgImage,
-			DisplayMode: req.DisplayMode,
-			PageTitle:   req.PageTitle,
-			PageFavicon: req.PageFavicon,
-			Footer:      req.Footer,
+			UserID:         userID,
+			BgImage:        req.BgImage,
+			DisplayMode:    req.DisplayMode,
+			PageTitle:      req.PageTitle,
+			PageFavicon:    req.PageFavicon,
+			Footer:         req.Footer,
+			WelcomeMessage: req.WelcomeMessage,
 		}
 		db.DB.Create(&settings)
 	} else {
@@ -81,6 +83,9 @@ func UpdateSettings(c *gin.Context) {
 		}
 		if req.Footer != "" {
 			updates["footer"] = req.Footer
+		}
+		if req.WelcomeMessage != "" {
+			updates["welcome_message"] = req.WelcomeMessage
 		}
 		if len(updates) > 0 {
 			db.DB.Model(&model.UserSettings{}).Where("user_id = ?", userID).Updates(updates)

@@ -7,7 +7,8 @@ export const useSettingsStore = defineStore('settings', {
     displayMode: 'both',
     pageTitle: '个人导航页',
     pageFavicon: '',
-    footer: ''
+    footer: '',
+    welcomeMessage: ''
   }),
   actions: {
     async fetch(userId) {
@@ -18,6 +19,7 @@ export const useSettingsStore = defineStore('settings', {
         this.pageTitle = s.page_title || '个人导航页'
         this.pageFavicon = s.page_favicon || ''
         this.footer = s.footer || ''
+        this.welcomeMessage = s.welcome_message || ''
         document.title = this.pageTitle
         if (this.pageFavicon) {
           const link = document.querySelector('link[rel="icon"]')
@@ -34,6 +36,7 @@ export const useSettingsStore = defineStore('settings', {
       this.pageTitle = s.page_title || '个人导航页'
       this.pageFavicon = s.page_favicon || ''
       this.footer = s.footer || ''
+        this.welcomeMessage = s.welcome_message || ''
       document.title = this.pageTitle
       if (this.pageFavicon) {
         const link = document.querySelector('link[rel="icon"]')

@@ -45,6 +45,7 @@ export const useBookmarksStore = defineStore('bookmarks', {
         if (!g.bookmarks) g.bookmarks = []
         g.bookmarks.push(bm)
       }
+      return bm
     },
     async editBookmark(groupId, bookmarkId, data) {
       await updateBookmark(groupId, bookmarkId, data)

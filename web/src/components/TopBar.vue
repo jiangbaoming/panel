@@ -1,86 +1,50 @@
 <template>
   <div class="topbar">
-    <!-- 左侧留空 -->
     <div class="topbar-left"></div>
-    <!-- 右侧操作按钮 -->
     <div class="topbar-right">
-      <el-button text @click="$emit('openSettings')" title="设置">
-        <el-icon :size="20"><Setting /></el-icon>
-        <span class="btn-label">设置</span>
+      <el-button text class="edit-btn" :class="{ active: editMode }" @click="$emit('toggleEdit')" :title="editMode ? '退出编辑' : '编辑模式'">
+        <el-icon :size="18">
+          <Edit v-if="!editMode" />
+          <CloseBold v-else />
+        </el-icon>
       </el-button>
-      <el-button text @click="$emit('openImages')" title="图库">
-        <el-icon :size="20"><Picture /></el-icon>
-        <span class="btn-label">图库</span>
-      </el-button>
-      <el-button v-if="auth.isAdmin" text @click="$emit('openUsers')" title="用户管理">
-        <el-icon :size="20"><UserFilled /></el-icon>
-        <span class="btn-label">用户</span>
-      </el-button>
-      <el-button text @click="handleLogout" title="退出登录">
-        <el-icon :size="20"><SwitchButton /></el-icon>
-        <span class="btn-label">退出</span>
-      </el-button>
+      <el-dropdown trigger="click" @command="handleCommand">
+        <el-button text class="topbar-trigger">
+          <el-icon :size="18"><MoreFilled /></el-icon>
+        </el-button>
+        <template #dropdown>
+          <el-dropdown-menu>
+            <el-dropdown-item command="openSettings">
+              <el-icon :size="16"><Setting /></el-icon>
+              <span>设置</span>
+            </el-dropdown-item>
+            <el-dropdown-item command="logout" divided>
+              <el-icon :size="16"><SwitchButton /></el-icon>
+              <span>退出</span>
+            </el-dropdown-item>
+          </el-dropdown-menu>
+        </template>
+      </el-dropdown>
     </div>
-    <!-- 修改密码弹窗（独立） -->
-    <el-dialog v-model="pwdVisible" title="修改密码" width="400px">
-      <el-form ref="pwdFormRef" :model="pwdForm" :rules="pwdRules" label-width="0">
-        <el-form-item prop="oldPassword">
-          <el-input v-model="pwdForm.oldPassword" type="password" placeholder="旧密码" show-password />
-        </el-form-item>
-        <el-form-item prop="newPassword">
-          <el-input v-model="pwdForm.newPassword" type="password" placeholder="新密码（至少6位）" show-password />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="pwdVisible = false">取消</el-button>
-        <el-button type="primary" :loading="pwdLoading" @click="handleChangePwd">确认</el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { changePassword } from '@/api'
-import { ElMessage } from 'element-plus'
-import { Setting, Picture, UserFilled, SwitchButton } from '@element-plus/icons-vue'
+import { MoreFilled, Edit, CloseBold, Setting, SwitchButton } from '@element-plus/icons-vue'
 
-const emit = defineEmits(['openSettings', 'openImages', 'openUsers'])
+defineProps({ editMode: Boolean })
+const emit = defineEmits(['openSettings', 'toggleEdit'])
 const router = useRouter()
 const auth = useAuthStore()
 
-const pwdVisible = ref(false)
-const pwdLoading = ref(false)
-const pwdFormRef = ref(null)
-const pwdForm = reactive({ oldPassword: '', newPassword: '' })
-const pwdRules = {
-  oldPassword: [{ required: true, message: '请输入旧密码', trigger: 'blur' }],
-  newPassword: [{ required: true, min: 6, message: '新密码至少6位', trigger: 'blur' }]
-}
-
-defineExpose({ openPassword: () => { pwdVisible.value = true } })
-
-async function handleLogout() {
-  auth.logout()
-  router.push('/login')
-}
-
-async function handleChangePwd() {
-  const valid = await pwdFormRef.value.validate().catch(() => false)
-  if (!valid) return
-  pwdLoading.value = true
-  try {
-    await changePassword(pwdForm.oldPassword, pwdForm.newPassword)
-    ElMessage.success('密码修改成功')
-    pwdVisible.value = false
-    pwdForm.oldPassword = ''
-    pwdForm.newPassword = ''
-  } catch (e) {
-    ElMessage.error(e.response?.data?.error || '修改失败')
-  } finally {
-    pwdLoading.value = false
+function handleCommand(cmd) {
+  if (cmd === 'toggleEdit') emit('toggleEdit')
+  else if (cmd === 'openSettings') emit('openSettings')
+  else if (cmd === 'logout') {
+    auth.logout()
+    router.push('/login')
   }
 }
 </script>
@@ -90,8 +54,7 @@ async function handleChangePwd() {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  padding: 16px 24px;
-  max-width: 1100px;
+  padding: 12px 20px;
   margin: 0 auto;
   width: 100%;
 }
@@ -101,10 +64,34 @@ async function handleChangePwd() {
 .topbar-right {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
 }
-.btn-label {
-  font-size: 13px;
-  margin-left: 4px;
+.edit-btn {
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast), color var(--transition-fast);
+  color: rgba(255, 255, 255, 0.65);
+}
+.edit-btn:hover {
+  color: rgba(255, 255, 255, 0.92);
+}
+.edit-btn.active {
+  background: rgba(64, 158, 255, 0.2);
+  color: rgba(255, 255, 255, 0.92);
+}
+.topbar-trigger {
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+  color: rgba(255, 255, 255, 0.65);
+}
+.topbar-trigger:hover {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+@media (max-width: 768px) {
+  .topbar {
+    padding: 8px 12px;
+  }
 }
 </style>

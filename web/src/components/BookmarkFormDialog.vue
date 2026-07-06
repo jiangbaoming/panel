@@ -2,11 +2,12 @@
   <el-dialog
     :title="editData ? '编辑书签' : '添加书签'"
     v-model="dialogVisible"
-    width="480px"
+    width="520px"
     :close-on-click-modal="false"
+    append-to-body
     @closed="resetForm"
   >
-    <el-form ref="formRef" :model="form" :rules="rules" label-width="70px">
+    <el-form ref="formRef" :model="form" :rules="rules" label-width="80px">
       <el-form-item label="名称" prop="name">
         <el-input v-model="form.name" placeholder="书签名称" />
       </el-form-item>
@@ -14,17 +15,13 @@
         <el-input v-model="form.url" placeholder="https://" />
       </el-form-item>
       <el-form-item label="图标">
-        <el-input v-model="form.icon" placeholder="Emoji 或图片 URL">
-          <template #prepend><span style="font-size:18px">{{ form.icon || '🔗' }}</span></template>
-        </el-input>
+        <IconPicker v-model="form.icon" default-icon="🔗" />
       </el-form-item>
       <el-form-item label="背景色">
-        <el-color-picker v-model="form.bg_color" show-alpha />
-        <span class="form-tip">卡片背景色</span>
+        <ColorPicker v-model="form.bg_color" />
       </el-form-item>
       <el-form-item label="图标背景">
-        <el-color-picker v-model="form.icon_bg" show-alpha />
-        <span class="form-tip">图标区域背景色</span>
+        <ColorPicker v-model="form.icon_bg" />
       </el-form-item>
     </el-form>
     <template #footer>
@@ -38,11 +35,14 @@
 import { ref, reactive, watch, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useBookmarksStore } from '@/stores/bookmarks'
+import IconPicker from './IconPicker.vue'
+import ColorPicker from './ColorPicker.vue'
 
 const props = defineProps({
   visible: Boolean,
   groupId: { type: Number, required: true },
-  editData: { type: Object, default: null }
+  editData: { type: Object, default: null },
+  pinned: { type: Boolean, default: false }
 })
 const emit = defineEmits(['update:visible', 'saved'])
 
@@ -59,8 +59,8 @@ const form = reactive({
   name: '',
   url: '',
   icon: '',
-  bg_color: '',
-  icon_bg: ''
+  bg_color: 'rgba(255, 255, 255, 0.06)',
+  icon_bg: 'rgba(255, 255, 255, 0.06)'
 })
 
 const rules = {
@@ -74,15 +74,15 @@ watch(() => props.visible, (v) => {
       name: props.editData.name || '',
       url: props.editData.url || '',
       icon: props.editData.icon || '',
-      bg_color: props.editData.bg_color || '',
-      icon_bg: props.editData.icon_bg || ''
+      bg_color: props.editData.bg_color || 'rgba(255, 255, 255, 0.06)',
+      icon_bg: props.editData.icon_bg || 'rgba(255, 255, 255, 0.06)'
     })
   }
 })
 
 function resetForm() {
   form.name = ''; form.url = ''; form.icon = ''
-  form.bg_color = ''; form.icon_bg = ''
+  form.bg_color = 'rgba(255, 255, 255, 0.06)'; form.icon_bg = 'rgba(255, 255, 255, 0.06)'
   formRef.value?.resetFields()
 }
 
@@ -94,7 +94,10 @@ async function handleSave() {
     if (props.editData) {
       await bookmarksStore.editBookmark(props.groupId, props.editData.id, { ...form })
     } else {
-      await bookmarksStore.addBookmark(props.groupId, { ...form })
+      const bm = await bookmarksStore.addBookmark(props.groupId, { ...form })
+      if (props.pinned && bm) {
+        await bookmarksStore.togglePinned(bm.id, true)
+      }
     }
     ElMessage.success(props.editData ? '已更新' : '已添加')
     dialogVisible.value = false
@@ -106,11 +109,3 @@ async function handleSave() {
   }
 }
 </script>
-
-<style scoped>
-.form-tip {
-  font-size: 12px;
-  color: #86868b;
-  margin-left: 8px;
-}
-</style>
