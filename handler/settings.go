@@ -23,6 +23,7 @@ func GetSettings(c *gin.Context) {
 			DisplayMode: "both",
 			PageTitle:   "个人导航页",
 			PageFavicon: "",
+			Footer:      "",
 		}
 		db.DB.Create(&newSettings)
 		settings = newSettings
@@ -40,6 +41,7 @@ func UpdateSettings(c *gin.Context) {
 		DisplayMode string `json:"display_mode"`
 		PageTitle   string `json:"page_title"`
 		PageFavicon string `json:"page_favicon"`
+		Footer      string `json:"footer"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -59,6 +61,7 @@ func UpdateSettings(c *gin.Context) {
 			DisplayMode: req.DisplayMode,
 			PageTitle:   req.PageTitle,
 			PageFavicon: req.PageFavicon,
+			Footer:      req.Footer,
 		}
 		db.DB.Create(&settings)
 	} else {
@@ -75,6 +78,9 @@ func UpdateSettings(c *gin.Context) {
 		}
 		if req.PageFavicon != "" {
 			updates["page_favicon"] = req.PageFavicon
+		}
+		if req.Footer != "" {
+			updates["footer"] = req.Footer
 		}
 		if len(updates) > 0 {
 			db.DB.Model(&model.UserSettings{}).Where("user_id = ?", userID).Updates(updates)

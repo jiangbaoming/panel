@@ -6,7 +6,8 @@ export const useSettingsStore = defineStore('settings', {
     bgImage: '',
     displayMode: 'both',
     pageTitle: '个人导航页',
-    pageFavicon: ''
+    pageFavicon: '',
+    footer: ''
   }),
   actions: {
     async fetch(userId) {
@@ -16,9 +17,11 @@ export const useSettingsStore = defineStore('settings', {
         this.displayMode = s.display_mode || 'both'
         this.pageTitle = s.page_title || '个人导航页'
         this.pageFavicon = s.page_favicon || ''
+        this.footer = s.footer || ''
         document.title = this.pageTitle
         if (this.pageFavicon) {
-          document.querySelector('link[rel="icon"]').href = this.pageFavicon
+          const link = document.querySelector('link[rel="icon"]')
+          if (link) link.href = this.pageFavicon
         }
       } catch (e) {
         // 默认值已设置
@@ -26,15 +29,15 @@ export const useSettingsStore = defineStore('settings', {
     },
     async save(userId, data) {
       const s = await apiUpdateSettings(userId, data)
-      Object.assign(this, {
-        bgImage: s.bg_image || '',
-        displayMode: s.display_mode || 'both',
-        pageTitle: s.page_title || '个人导航页',
-        pageFavicon: s.page_favicon || ''
-      })
+      this.bgImage = s.bg_image || ''
+      this.displayMode = s.display_mode || 'both'
+      this.pageTitle = s.page_title || '个人导航页'
+      this.pageFavicon = s.page_favicon || ''
+      this.footer = s.footer || ''
       document.title = this.pageTitle
       if (this.pageFavicon) {
-        document.querySelector('link[rel="icon"]').href = this.pageFavicon
+        const link = document.querySelector('link[rel="icon"]')
+        if (link) link.href = this.pageFavicon
       }
     }
   }

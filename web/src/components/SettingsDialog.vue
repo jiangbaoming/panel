@@ -22,6 +22,14 @@
           </template>
         </el-input>
       </el-form-item>
+      <el-form-item label="页脚内容">
+        <el-input
+          v-model="local.footer"
+          type="textarea"
+          :rows="3"
+          placeholder="支持纯文本，留空则不显示页脚"
+        />
+      </el-form-item>
     </el-form>
     <template #footer>
       <el-button @click="dialogVisible = false">取消</el-button>
@@ -53,13 +61,14 @@ const dialogVisible = computed({
   set: (v) => emit('update:visible', v)
 })
 
-const local = reactive({ title: '', bgImage: '', favicon: '' })
+const local = reactive({ title: '', bgImage: '', favicon: '', footer: '' })
 
 watch(() => props.visible, (v) => {
   if (v) {
     local.title = settings.pageTitle
     local.bgImage = settings.bgImage
     local.favicon = settings.pageFavicon
+    local.footer = settings.footer
   }
 })
 
@@ -83,7 +92,8 @@ async function handleSave() {
     await settings.save(auth.userId, {
       page_title: local.title,
       bg_image: local.bgImage,
-      page_favicon: local.favicon
+      page_favicon: local.favicon,
+      footer: local.footer
     })
     ElMessage.success('已保存')
     dialogVisible.value = false

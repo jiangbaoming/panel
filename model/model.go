@@ -97,6 +97,7 @@ type UserSettings struct {
 	DisplayMode string `json:"display_mode" gorm:"default:both"`
 	PageTitle   string `json:"page_title" gorm:"default:个人导航页"`
 	PageFavicon string `json:"page_favicon" gorm:"default:''"`
+	Footer      string `json:"footer" gorm:"default:''"`
 }
 
 func (UserSettings) TableName() string {

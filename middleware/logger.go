@@ -8,21 +8,19 @@ import (
 )
 
 // Logger Gin 请求日志中间件
+// 记录每个请求的方法、路径、状态码、客户端 IP 和耗时
 func Logger() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
 		path := c.Request.URL.Path
 		query := c.Request.URL.RawQuery
 
-		// 放行
 		c.Next()
 
-		// 收集信息
 		status := c.Writer.Status()
 		method := c.Request.Method
 		clientIP := c.ClientIP()
 		latency := time.Since(start)
-		err := c.Errors.ByType(gin.ErrorTypeAny).String()
 
 		attrs := []slog.Attr{
 			slog.Int("status", status),
@@ -34,16 +32,18 @@ func Logger() gin.HandlerFunc {
 		if query != "" {
 			attrs = append(attrs, slog.String("query", query))
 		}
-		if err != "" {
-			attrs = append(attrs, slog.String("error", err))
-		}
 
+		// 根据状态码选择日志级别
 		level := slog.LevelInfo
+		msg := "请求完成"
 		if status >= 500 {
 			level = slog.LevelError
+			msg = "服务器错误"
 		} else if status >= 400 {
 			level = slog.LevelWarn
+			msg = "客户端错误"
 		}
-		slog.LogAttrs(c.Request.Context(), level, "", attrs...)
+
+		slog.LogAttrs(c.Request.Context(), level, msg, attrs...)
 	}
 }
