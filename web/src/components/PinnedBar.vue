@@ -1,58 +1,85 @@
 <template>
   <div v-if="bookmarksStore.pinned.length > 0 || editMode" class="dock">
-    <div class="dock-inner">
-      <div
-        v-for="(bm, idx) in bookmarksStore.pinned"
-        :key="bm.id"
-        class="dock-item"
-        :class="{ 'dock-item--hover': hoverId === bm.id }"
-        @click="openUrl(bm.url)"
-        @mouseenter="onHover(bm.id, idx)"
-        @mouseleave="hoverId = null"
-      >
-        <span class="dock-tooltip">{{ bm.name }}</span>
-        <el-button
+    <el-button
+      v-show="canScrollLeft"
+      class="dock-scroll-btn dock-scroll-left"
+      @click="scrollDock(-1)"
+      aria-label="向左滚动"
+      >‹</el-button
+    >
+    <div
+      class="dock-viewport"
+      ref="viewportRef"
+      @touchstart="onTouchStart"
+      @touchmove="onTouchMove"
+      @touchend="onTouchEnd">
+      <div class="dock-inner" :style="dockInnerStyle">
+        <el-tooltip
+          v-for="bm in bookmarksStore.pinned"
+          :key="bm.id"
+          :content="bm.name"
+          placement="top"
+          :show-after="100"
+          :hide-after="0">
+          <div
+            class="dock-item"
+            @click="openUrl(bm.url)"
+            @mouseenter="hoverId = bm.id"
+            @mouseleave="hoverId = null">
+            <el-icon
+              v-if="editMode"
+              @click.stop="removePin(bm)"
+              title="取消常驻"
+              class="dock-remove"
+              ><CircleClose
+            /></el-icon>
+            <img
+              v-if="isImageUrl(bm.icon)"
+              :src="bm.icon"
+              class="dock-icon-img" />
+            <span v-else class="dock-icon-emoji">{{ bm.icon || "🔗" }}</span>
+            <span class="dock-dot" v-show="hoverId === bm.id"></span>
+          </div>
+        </el-tooltip>
+        <div
           v-if="editMode"
-          class="dock-remove"
-          @click.stop="removePin(bm)"
-          title="取消常驻"
-        >×</el-button>
-        <img v-if="isImageUrl(bm.icon)" :src="bm.icon" class="dock-icon-img" />
-        <span v-else class="dock-icon-emoji">{{ bm.icon || '🔗' }}</span>
-        <span class="dock-dot" v-show="hoverId === bm.id"></span>
-      </div>
-      <div
-        v-if="editMode"
-        class="dock-item dock-add"
-        @click="openAdd"
-        title="添加常驻书签"
-      >
-        <el-icon :size="24" class="dock-add-icon"><Plus /></el-icon>
+          class="dock-item dock-add"
+          @click="openAdd"
+          title="添加常驻书签">
+          <el-icon :size="20" class="dock-add-icon"><Plus /></el-icon>
+        </div>
       </div>
     </div>
-    <!-- 选择常驻书签弹窗 -->
+    <el-button
+      v-show="canScrollRight"
+      class="dock-scroll-btn dock-scroll-right"
+      @click="scrollDock(1)"
+      aria-label="向右滚动"
+      >›</el-button
+    >
+
     <el-dialog
       v-model="pickerVisible"
       title="选择常驻书签"
       width="420px"
       :close-on-click-modal="false"
-      append-to-body
-    >
+      append-to-body>
       <el-input
-          v-model="searchKeyword"
-          placeholder="搜索书签..."
-          clearable
-          class="picker-search"
-        />
-        <div class="picker-list" v-if="filteredBookmarks.length > 0">
+        v-model="searchKeyword"
+        placeholder="搜索书签..."
+        clearable
+        class="picker-search" />
+      <div class="picker-list" v-if="filteredBookmarks.length > 0">
         <div
           v-for="bm in filteredBookmarks"
           :key="bm.id"
           class="picker-item"
-          @click="doPin(bm)"
-        >
-          <img v-if="isImageUrl(bm.icon)" :src="bm.icon" class="picker-icon-img" />
-          <span v-else class="picker-icon-emoji">{{ bm.icon || '🔗' }}</span>
+          @click="doPin(bm)">
+          <img
+            v-if="isImageUrl(bm.icon)"
+            :src="bm.icon"
+            class="picker-icon-img" />
+          <span v-else class="picker-icon-emoji">{{ bm.icon || "🔗" }}</span>
           <div class="picker-info">
             <span class="picker-name">{{ bm.name }}</span>
             <span class="picker-group">{{ bm.groupName }}</span>
@@ -65,84 +92,141 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue'
-import { useBookmarksStore } from '@/stores/bookmarks'
+import { ref, computed, onMounted, onUpdated, nextTick, watch } from "vue";
+import { ElMessage, ElMessageBox } from "element-plus";
+import { Plus } from "@element-plus/icons-vue";
+import { useBookmarksStore } from "@/stores/bookmarks";
 
 const props = defineProps({
-  editMode: { type: Boolean, default: false }
-})
+  editMode: { type: Boolean, default: false },
+});
 
-const bookmarksStore = useBookmarksStore()
-const hoverId = ref(null)
-const hoverIdx = ref(-1)
-const pickerVisible = ref(false)
-const searchKeyword = ref('')
+const bookmarksStore = useBookmarksStore();
+const hoverId = ref(null);
+const pickerVisible = ref(false);
+const searchKeyword = ref("");
+const viewportRef = ref(null);
+const canScrollLeft = ref(false);
+const canScrollRight = ref(false);
+const scrollOffset = ref(0);
+const maxScrollOffset = ref(0);
 
 const unpinnedBookmarks = computed(() => {
-  const pinnedIds = new Set(bookmarksStore.pinned.map(b => b.id))
-  const result = []
+  const pinnedIds = new Set(bookmarksStore.pinned.map((b) => b.id));
+  const result = [];
   for (const g of bookmarksStore.groups) {
-    for (const bm of (g.bookmarks || [])) {
+    for (const bm of g.bookmarks || []) {
       if (!pinnedIds.has(bm.id)) {
-        result.push({ ...bm, groupName: g.name })
+        result.push({ ...bm, groupName: g.name });
       }
     }
   }
-  return result
-})
+  return result;
+});
 
 const filteredBookmarks = computed(() => {
-  const kw = searchKeyword.value.trim().toLowerCase()
-  if (!kw) return unpinnedBookmarks.value
+  const kw = searchKeyword.value.trim().toLowerCase();
+  if (!kw) return unpinnedBookmarks.value;
   return unpinnedBookmarks.value.filter(
-    bm => bm.name.toLowerCase().includes(kw) || bm.groupName.toLowerCase().includes(kw)
-  )
-})
+    (bm) =>
+      bm.name.toLowerCase().includes(kw) ||
+      bm.groupName.toLowerCase().includes(kw),
+  );
+});
 
 function isImageUrl(str) {
-  return str && (str.startsWith('http') || str.startsWith('/uploads/'))
+  return str && (str.startsWith("http") || str.startsWith("/uploads/"));
 }
 function openUrl(url) {
-  if (url) window.open(url, '_blank')
-}
-function onHover(id, idx) {
-  hoverId.value = id
-  hoverIdx.value = idx
+  if (!props.editMode && url) window.open(url, "_blank");
 }
 
 function openAdd() {
-  searchKeyword.value = ''
-  pickerVisible.value = true
+  searchKeyword.value = "";
+  pickerVisible.value = true;
 }
 
 async function doPin(bm) {
   try {
-    await bookmarksStore.togglePinned(bm.id, true)
-    ElMessage.success('已常驻')
-    pickerVisible.value = false
-  } catch (e) {
-    ElMessage.error('操作失败')
-  }
+    await bookmarksStore.togglePinned(bm.id, true);
+    ElMessage.success("已常驻");
+    pickerVisible.value = false;
+  } catch {}
 }
 
 async function removePin(bm) {
   try {
-    await ElMessageBox.confirm(`确定取消常驻「${bm.name}」？`, '提示', { type: 'warning' })
-    await bookmarksStore.togglePinned(bm.id, false)
-    ElMessage.success('已取消常驻')
-  } catch (e) {}
+    await ElMessageBox.confirm(`确定取消常驻「${bm.name}」？`, "提示", {
+      type: "warning",
+    });
+    await bookmarksStore.togglePinned(bm.id, false);
+    ElMessage.success("已取消常驻");
+  } catch {}
 }
+
+function updateScrollState() {
+  const el = viewportRef.value;
+  if (!el || !el.firstElementChild) return;
+  const innerWidth = el.firstElementChild.scrollWidth;
+  const overflow = innerWidth - el.clientWidth;
+  maxScrollOffset.value = Math.max(0, overflow);
+  canScrollLeft.value = scrollOffset.value < -2;
+  canScrollRight.value = scrollOffset.value > -(maxScrollOffset.value - 2);
+}
+
+function scrollDock(dir) {
+  const step = 100;
+  const next = scrollOffset.value - dir * step;
+  scrollOffset.value = Math.max(-maxScrollOffset.value, Math.min(0, next));
+}
+
+const touchStartX = ref(0);
+const touchStartOffset = ref(0);
+const isTouching = ref(false);
+
+const dockInnerStyle = computed(() => ({
+  transform: `translateX(${scrollOffset.value}px)`,
+  transition: isTouching.value ? "none" : "transform 0.3s ease",
+}));
+
+function onTouchStart(e) {
+  touchStartX.value = e.touches[0].clientX;
+  touchStartOffset.value = scrollOffset.value;
+  isTouching.value = true;
+}
+
+function onTouchMove(e) {
+  const dx = e.touches[0].clientX - touchStartX.value;
+  const next = touchStartOffset.value + dx;
+  scrollOffset.value = Math.max(-maxScrollOffset.value, Math.min(0, next));
+}
+
+function onTouchEnd() {
+  isTouching.value = false;
+}
+
+onMounted(() => nextTick(updateScrollState));
+onUpdated(() => nextTick(updateScrollState));
+watch(
+  () => bookmarksStore.pinned.length,
+  () => {
+    scrollOffset.value = 0;
+    nextTick(updateScrollState);
+  },
+);
 </script>
 
 <style scoped>
 .dock {
   display: flex;
+  align-items: flex-end;
   justify-content: center;
   margin: 32px 0 24px;
   animation: dockSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
   perspective: 1200px;
+  max-width: 100%;
+  overflow: hidden;
+  position: relative;
 }
 
 @keyframes dockSlideUp {
@@ -156,11 +240,49 @@ async function removePin(bm) {
   }
 }
 
+.dock-viewport {
+  overflow: hidden;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .dock-inner {
   display: flex;
   align-items: flex-end;
+  justify-content: center;
   gap: 4px;
   padding: 10px 16px;
+  flex-wrap: nowrap;
+}
+
+.dock-scroll-btn {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background 0.15s,
+    color 0.15s;
+  margin-bottom: 10px;
+  -webkit-tap-highlight-color: transparent;
+}
+.dock-scroll-btn:hover {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+}
+
+/* el-tooltip 包裹层不做弹性压缩 */
+.el-tooltip__trigger {
+  flex-shrink: 0;
 }
 
 .dock-item {
@@ -177,40 +299,8 @@ async function removePin(bm) {
   border-radius: 12px;
   flex-shrink: 0;
 }
-
 .dock-item:hover {
   transform: scale(1.35);
-}
-
-.dock-tooltip {
-  position: absolute;
-  top: -36px;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 4px 10px;
-  background: rgba(0, 0, 0, 0.75);
-  color: #fff;
-  font-size: 12px;
-  border-radius: 6px;
-  white-space: nowrap;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-.dock-tooltip::after {
-  content: '';
-  position: absolute;
-  bottom: -4px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 0;
-  height: 0;
-  border-left: 5px solid transparent;
-  border-right: 5px solid transparent;
-  border-top: 5px solid rgba(0, 0, 0, 0.75);
-}
-.dock-item:hover .dock-tooltip {
-  opacity: 1;
 }
 
 .dock-icon-img {
@@ -220,13 +310,15 @@ async function removePin(bm) {
   border-radius: 8px;
   flex-shrink: 0;
 }
-
 .dock-icon-emoji {
-  font-size: 36px;
-  line-height: 1;
+  width: 44px;
+  height: 44px;
+  font-size: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
 }
-
 .dock-dot {
   width: 4px;
   height: 4px;
@@ -235,20 +327,19 @@ async function removePin(bm) {
   margin-top: 6px;
   flex-shrink: 0;
 }
-
 .dock-remove {
   position: absolute;
-  top: -4px;
-  right: -4px;
-  width: 18px;
-  height: 18px;
+  top: 8px;
+  right: 4px;
+  width: 15px;
+  height: 15px;
   border-radius: 50%;
-  border: none;
-  background: rgba(255, 80, 80, 0.85);
-  color: #fff;
+  color: #e91515;
   font-size: 12px;
   line-height: 18px;
   text-align: center;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
   z-index: 2;
   opacity: 0;
@@ -257,7 +348,6 @@ async function removePin(bm) {
 .dock-item:hover .dock-remove {
   opacity: 1;
 }
-
 .dock-add {
   background: none;
   border: 1px dashed rgba(255, 255, 255, 0.3);
@@ -279,7 +369,6 @@ async function removePin(bm) {
 .picker-search {
   margin-bottom: 12px;
 }
-
 .picker-list {
   max-height: 360px;
   overflow-y: auto;
@@ -353,9 +442,6 @@ async function removePin(bm) {
     width: 3px;
     height: 3px;
     margin-top: 4px;
-  }
-  .dock-tooltip {
-    display: none;
   }
   .dock-add {
     width: 32px;

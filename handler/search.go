@@ -5,21 +5,21 @@ import (
 	"panel/db"
 	"panel/middleware"
 	"panel/model"
+	"panel/response"
 
 	"github.com/gin-gonic/gin"
 )
 
-// 搜索当前用户的书签
 func SearchBookmarks(c *gin.Context) {
 	user := middleware.GetUser(c)
 	if user == nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "未认证"})
+		response.Error(c, http.StatusUnauthorized, "未认证", nil)
 		return
 	}
 
 	q := c.Query("q")
 	if q == "" {
-		c.JSON(http.StatusOK, []model.SearchResult{})
+		response.OK(c, []model.SearchResult{})
 		return
 	}
 
@@ -30,9 +30,9 @@ func SearchBookmarks(c *gin.Context) {
 		Where("b.user_id = ? AND (b.name LIKE ? OR b.url LIKE ?)", user.ID, "%"+q+"%", "%"+q+"%").
 		Scan(&results).Error
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "查询失败"})
+		response.Error(c, http.StatusInternalServerError, "查询失败", err)
 		return
 	}
 
-	c.JSON(http.StatusOK, results)
+	response.OK(c, results)
 }

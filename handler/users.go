@@ -5,24 +5,23 @@ import (
 	"panel/db"
 	"panel/middleware"
 	"panel/model"
+	"panel/response"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 )
 
-// 获取所有用户（管理员）
 func GetUsers(c *gin.Context) {
 	var users []model.User
 	err := db.DB.Select("id, username, avatar, role").Find(&users).Error
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "查询失败"})
+		response.Error(c, http.StatusInternalServerError, "查询失败", err)
 		return
 	}
 
-	c.JSON(http.StatusOK, users)
+	response.OK(c, users)
 }
 
-// 添加用户（管理员）
 func CreateUser(c *gin.Context) {
 	var req struct {
 		Username string `json:"username" binding:"required"`
@@ -32,7 +31,7 @@ func CreateUser(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "缺少用户名或密码"})
+		response.Error(c, http.StatusBadRequest, "缺少用户名或密码", nil)
 		return
 	}
 
@@ -54,11 +53,11 @@ func CreateUser(c *gin.Context) {
 
 	err := db.DB.Create(&user).Error
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "用户名已存在"})
+		response.Error(c, http.StatusBadRequest, "用户名已存在", nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	response.OK(c, gin.H{
 		"id":       user.ID,
 		"username": req.Username,
 		"avatar":   req.Avatar,
@@ -66,22 +65,20 @@ func CreateUser(c *gin.Context) {
 	})
 }
 
-// 删除用户（管理员）
 func DeleteUser(c *gin.Context) {
 	id := c.Param("id")
 	err := db.DB.Delete(&model.User{}, id).Error
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "删除失败"})
+		response.Error(c, http.StatusInternalServerError, "删除失败", err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	response.OK(c, gin.H{"success": true})
 }
 
-// 修改自己的用户名
 func UpdateMe(c *gin.Context) {
 	user := middleware.GetUser(c)
 	if user == nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "未登录"})
+		response.Error(c, http.StatusUnauthorized, "未登录", nil)
 		return
 	}
 
@@ -90,19 +87,18 @@ func UpdateMe(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil || req.Username == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "用户名不能为空"})
+		response.Error(c, http.StatusBadRequest, "用户名不能为空", nil)
 		return
 	}
 
 	err := db.DB.Model(&model.User{}).Where("id = ?", user.ID).Update("username", req.Username).Error
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "用户名已存在"})
+		response.Error(c, http.StatusBadRequest, "用户名已存在", nil)
 		return
 	}
 
-	// 签发新 token
 	token, _ := middleware.GenerateToken(user.ID, req.Username, user.Role)
-	c.JSON(http.StatusOK, gin.H{
+	response.OK(c, gin.H{
 		"token":    token,
 		"username": req.Username,
 	})

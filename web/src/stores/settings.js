@@ -21,10 +21,7 @@ export const useSettingsStore = defineStore('settings', {
         this.footer = s.footer || ''
         this.welcomeMessage = s.welcome_message || ''
         document.title = this.pageTitle
-        if (this.pageFavicon) {
-          const link = document.querySelector('link[rel="icon"]')
-          if (link) link.href = this.pageFavicon
-        }
+        updateFavicon(this.pageFavicon)
       } catch (e) {
         // 默认值已设置
       }
@@ -36,12 +33,21 @@ export const useSettingsStore = defineStore('settings', {
       this.pageTitle = s.page_title || '个人导航页'
       this.pageFavicon = s.page_favicon || ''
       this.footer = s.footer || ''
-        this.welcomeMessage = s.welcome_message || ''
+      this.welcomeMessage = s.welcome_message || ''
       document.title = this.pageTitle
-      if (this.pageFavicon) {
-        const link = document.querySelector('link[rel="icon"]')
-        if (link) link.href = this.pageFavicon
-      }
+      updateFavicon(this.pageFavicon)
     }
   }
 })
+
+function updateFavicon(url) {
+  const valid = url && (url.startsWith('http') || url.startsWith('/') || url.startsWith('data:'))
+  const href = valid ? url : 'data:,'
+  let link = document.querySelector('link[rel="icon"]')
+  if (!link) {
+    link = document.createElement('link')
+    link.rel = 'icon'
+    document.head.appendChild(link)
+  }
+  link.href = href
+}

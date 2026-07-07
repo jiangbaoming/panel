@@ -93,9 +93,7 @@ async function handlePin(bm) {
     await bookmarksStore.togglePinned(bm.id, !bm.pinned)
     ElMessage.success(bm.pinned ? '已取消置顶' : '已置顶')
     emit('refresh')
-  } catch (e) {
-    ElMessage.error('操作失败')
-  }
+  } catch {}
 }
 
 async function handleDelete(bm) {

@@ -90,6 +90,8 @@ const presetColors = [
 <style scoped>
 .color-picker-wrap {
   display: inline-flex;
+  display: flex;
+  width: 100%;
 }
 .color-btn {
   width: 60px;
@@ -115,10 +117,10 @@ const presetColors = [
 }
 
 :deep(.el-color-picker) {
-  width: 60px !important;
+  width: 100% !important;
 }
 :deep(.el-color-picker__trigger) {
-  width: 60px !important;
+  width: 100% !important;
   padding: 0 !important;
   border: none !important;
   border-radius: var(--radius-sm) !important;

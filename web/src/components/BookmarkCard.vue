@@ -70,7 +70,7 @@ const iconStyle = computed(() => {
 })
 
 function openUrl() {
-  if (props.bookmark.url) {
+  if (!props.editMode && props.bookmark.url) {
     window.open(props.bookmark.url, '_blank')
   }
 }

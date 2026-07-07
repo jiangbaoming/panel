@@ -60,8 +60,6 @@ async function handleSave() {
     ElMessage.success(props.editData ? '已更新' : '已创建')
     dialogVisible.value = false
     emit('saved')
-  } catch (e) {
-    ElMessage.error(e.response?.data?.error || '保存失败')
   } finally {
     loading.value = false
   }

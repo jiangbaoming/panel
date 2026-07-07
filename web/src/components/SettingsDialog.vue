@@ -41,7 +41,7 @@
 
           <h3 class="tab-section-title" style="margin-top:20px">Favicon</h3>
           <div class="bg-icon-picker-wrap">
-            <IconPicker v-model="local.pageFavicon" category="icon" default-icon="🌐" />
+            <IconPicker v-model="local.pageFavicon" category="icon" default-icon="🌐" hide-emoji />
           </div>
 
           <el-divider />
@@ -80,7 +80,6 @@
       <!-- ===== 背景设置 ===== -->
       <el-tab-pane label="背景设置" name="background">
         <div class="tab-content">
-          <!-- 当前背景预览（放最上面） -->
           <div class="bg-preview-wrap" :class="{ 'bg-preview-empty': !local.bgImage }">
             <template v-if="local.bgImage">
               <div
@@ -122,61 +121,7 @@
       <!-- ===== 图库管理 ===== -->
       <el-tab-pane label="图库管理" name="images">
         <div class="tab-content">
-          <!-- 工具栏：类型切换 + ZIP上传 + 清空 + 搜索 -->
-          <div class="img-toolbar">
-            <el-radio-group v-model="imgCategory">
-              <el-radio-button value="icon">图标</el-radio-button>
-              <el-radio-button value="bg">背景图</el-radio-button>
-            </el-radio-group>
-            <div style="flex:1" />
-            <el-upload
-              :auto-upload="false"
-              :show-file-list="false"
-              accept=".zip"
-              :on-change="handleZipUpload"
-            >
-              <el-button :icon="FolderOpened" size="small">上传 ZIP 包</el-button>
-            </el-upload>
-            <el-button :icon="Delete" size="small" type="danger" text @click="handleClearCategory">清空全部</el-button>
-          </div>
-
-          <div class="img-search-area">
-            <el-input
-              v-model="imgSearch"
-              placeholder="搜索..."
-              clearable
-              :prefix-icon="Search"
-              @input="onSearchInput"
-            />
-          </div>
-          <!-- 缩略图网格 + 分页 -->
-          <div class="img-scroll" @scroll="onImgScroll">
-          <div v-loading="imgLoading" class="img-grid">
-           <div class="img-upload-area">
-            <el-upload
-              :auto-upload="false" :show-file-list="false"
-              accept="image/*" multiple
-              :on-change="handleImgUpload"
-            >
-              <div class="img-upload-trigger">
-                <img v-if="imgPreviewUrl" :src="imgPreviewUrl" />
-                <div v-else class="img-upload-placeholder">
-                  <el-icon :size="20"><Upload /></el-icon>
-                  <span>上传图片</span>
-                </div>
-              </div>
-            </el-upload>
-          </div>
-            <div v-for="img in images" :key="img.id" class="img-card">
-              <img :src="img.url" loading="lazy" />
-              <div class="img-card-actions">
-                <el-button size="small" text @click="copyUrl(img.url)">复制链接</el-button>
-                <el-button size="small" type="danger" text @click="removeImg(img)">删除</el-button>
-              </div>
-              <div class="img-card-name">{{ img.original_name }}</div>
-            </div>
-          </div>
-          </div>
+          <IconPicker mode="manage" />
         </div>
       </el-tab-pane>
 
@@ -220,7 +165,6 @@
       <el-button type="primary" :loading="saving" @click="handleSave">保存设置</el-button>
     </template>
 
-    <!-- 修改密码弹窗 -->
     <el-dialog title="修改密码" v-model="showChangePwd" width="380px" append-to-body>
       <el-form ref="pwdFormRef" :model="pwdForm" :rules="pwdRules" label-width="0">
         <el-form-item prop="oldPassword">
@@ -236,7 +180,6 @@
       </template>
     </el-dialog>
 
-    <!-- 添加用户弹窗 -->
     <el-dialog title="添加用户" v-model="showAddUser" width="380px" append-to-body>
       <el-form ref="addFormRef" :model="addForm" :rules="addRules" label-width="0">
         <el-form-item prop="username">
@@ -263,11 +206,10 @@
 <script setup>
 import { ref, reactive, watch, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Upload, FolderOpened, Plus, Check, Search, Delete } from '@element-plus/icons-vue'
+import { Plus, Check } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import { updateMe, changePassword } from '@/api'
-import { getImages, uploadImage, uploadZip, deleteImage, clearImages } from '@/api'
 import { getUsers, createUser, deleteUser } from '@/api'
 import IconPicker from './IconPicker.vue'
 
@@ -282,11 +224,9 @@ const dialogVisible = computed({
   set: (v) => emit('update:visible', v)
 })
 
-// ===== 标签页 =====
 const activeTab = ref('basic')
 const saving = ref(false)
 
-// ===== 本地表单 =====
 const local = reactive({
   pageTitle: '',
   pageFavicon: '',
@@ -309,7 +249,6 @@ function onClosed() {
   settings.fetch(auth.userId)
 }
 
-// ===== 背景预设 =====
 const presets = [
   { label: '无', value: '' },
   { label: '山脉晨曦', value: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&q=80' },
@@ -317,7 +256,7 @@ const presets = [
   { label: '森林小径', value: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=1920&q=80' },
   { label: '星空银河', value: 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=1920&q=80' },
   { label: '极光夜空', value: 'https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=1920&q=80' },
-  { label: '雪山倒影', value: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&q=80' },
+  { label: '雪山倒影', value: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=1920&q=80' },
   { label: '沙漠星空', value: 'https://images.unsplash.com/photo-1509316785289-025f5b846b35?w=1920&q=80' },
   { label: '城市夜景', value: 'https://images.unsplash.com/photo-1519501025264-65ba15a82390?w=1920&q=80' },
   { label: '樱花大道', value: 'https://images.unsplash.com/photo-1522383225653-ed111181a951?w=1920&q=80' },
@@ -325,7 +264,6 @@ const presets = [
   { label: '云雾山谷', value: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=1920&q=80' },
 ]
 
-// ===== 修改用户名 =====
 const editingUsername = ref(false)
 const newUsername = ref('')
 const savingUsername = ref(false)
@@ -343,7 +281,6 @@ async function saveUsername() {
   savingUsername.value = true
   try {
     const res = await updateMe(newUsername.value.trim())
-    // 更新 token（后端返回新 token）
     if (res.token) {
       auth.token = res.token
       localStorage.setItem('token', res.token)
@@ -352,14 +289,11 @@ async function saveUsername() {
     localStorage.setItem('user', JSON.stringify(auth.user))
     ElMessage.success('用户名已更新')
     editingUsername.value = false
-  } catch (e) {
-    ElMessage.error(e.response?.data?.error || '修改失败')
   } finally {
     savingUsername.value = false
   }
 }
 
-// ===== 修改密码 =====
 const showChangePwd = ref(false)
 const pwdLoading = ref(false)
 const pwdFormRef = ref(null)
@@ -379,129 +313,11 @@ async function handleChangePwd() {
     showChangePwd.value = false
     pwdForm.oldPassword = ''
     pwdForm.newPassword = ''
-  } catch (e) {
-    ElMessage.error(e.response?.data?.error || '修改失败')
   } finally {
     pwdLoading.value = false
   }
 }
 
-// ===== 图库管理 =====
-const imgCategory = ref('icon')
-const images = ref([])
-const imgLoading = ref(false)
-const imgSearch = ref('')
-const imgPage = ref(1)
-const imgPageSize = ref(24)
-const imgTotal = ref(0)
-const imgPreviewUrl = ref('')
-const imgHasMore = ref(true)
-
-let searchTimer = null
-function onSearchInput() {
-  clearTimeout(searchTimer)
-  searchTimer = setTimeout(() => {
-    imgPage.value = 1
-    fetchImages()
-  }, 300)
-}
-
-watch(() => imgCategory.value, () => {
-  imgPage.value = 1
-  fetchImages()
-})
-
-watch(activeTab, (tab) => {
-  if (tab === 'images') {
-    imgPage.value = 1
-    fetchImages()
-  }
-})
-
-async function fetchImages(append = false) {
-  imgLoading.value = true
-  try {
-    const res = await getImages({
-      category: imgCategory.value,
-      q: imgSearch.value || undefined,
-      page: imgPage.value,
-      pageSize: imgPageSize.value
-    })
-    if (append) {
-      images.value = [...images.value, ...(res.data || [])]
-    } else {
-      images.value = res.data || []
-    }
-    imgTotal.value = res.total || 0
-    imgHasMore.value = images.value.length < imgTotal.value
-  } finally {
-    imgLoading.value = false
-  }
-}
-
-function onImgScroll(e) {
-  const el = e.target
-  if (el.scrollTop + el.clientHeight >= el.scrollHeight - 30 && imgHasMore.value && !imgLoading.value) {
-    imgPage.value++
-    fetchImages(true)
-  }
-}
-
-async function handleImgUpload(file) {
-  const formData = new FormData()
-  formData.append('file', file.raw || file)
-  formData.append('category', imgCategory.value)
-  try {
-    const res = await uploadImage(formData)
-    ElMessage.success('上传成功')
-    imgPreviewUrl.value = res.url || URL.createObjectURL(file.raw || file)
-    fetchImages()
-  } catch (e) {
-    ElMessage.error('上传失败')
-  }
-}
-
-async function handleZipUpload(file) {
-  const formData = new FormData()
-  formData.append('file', file.raw || file)
-  formData.append('category', imgCategory.value)
-  try {
-    const res = await uploadZip(formData)
-    ElMessage.success(`导入 ${res.imported || 0} 个文件`)
-    fetchImages()
-  } catch (e) {
-    ElMessage.error('导入失败')
-  }
-}
-
-function copyUrl(url) {
-  navigator.clipboard.writeText(url).then(() => ElMessage.success('已复制'))
-}
-
-async function removeImg(img) {
-  try {
-    await ElMessageBox.confirm(`确定删除「${img.original_name}」？`, '提示', { type: 'warning' })
-    await deleteImage(img.id)
-    ElMessage.success('已删除')
-    fetchImages()
-  } catch (e) {}
-}
-
-async function handleClearCategory() {
-  const label = imgCategory.value === 'icon' ? '图标' : '背景图'
-  try {
-    await ElMessageBox.confirm(
-      `确定清空所有「${label}」图片？此操作不可恢复。`,
-      '清空确认',
-      { type: 'warning', confirmButtonText: '确认清空', cancelButtonText: '取消' }
-    )
-    await clearImages(imgCategory.value)
-    ElMessage.success(`已清空所有${label}`)
-    fetchImages()
-  } catch (e) {}
-}
-
-// ===== 用户管理 =====
 const users = ref([])
 const userLoading = ref(false)
 const showAddUser = ref(false)
@@ -519,7 +335,7 @@ watch(activeTab, (tab) => {
 
 async function fetchUsers() {
   userLoading.value = true
-  try { users.value = await getUsers() } catch (e) {} finally { userLoading.value = false }
+  try { users.value = await getUsers() } catch {} finally { userLoading.value = false }
 }
 
 async function removeUser(row) {
@@ -528,7 +344,7 @@ async function removeUser(row) {
     await deleteUser(row.id)
     ElMessage.success('已删除')
     fetchUsers()
-  } catch (e) {}
+  } catch {}
 }
 
 async function handleAddUser() {
@@ -543,14 +359,11 @@ async function handleAddUser() {
     addForm.password = ''
     addForm.role = 'guest'
     fetchUsers()
-  } catch (e) {
-    ElMessage.error(e.response?.data?.error || '添加失败')
   } finally {
     addUserLoading.value = false
   }
 }
 
-// ===== 保存设置 =====
 async function handleSave() {
   saving.value = true
   try {
@@ -563,14 +376,11 @@ async function handleSave() {
     })
     ElMessage.success('已保存')
     dialogVisible.value = false
-  } catch (e) {
-    ElMessage.error('保存失败')
   } finally {
     saving.value = false
   }
 }
 
-// 预加载用户数据（管理员预先加载）
 onMounted(() => {
   if (auth.isAdmin) fetchUsers()
 })
@@ -595,14 +405,12 @@ onMounted(() => {
   margin: 0 0 12px;
 }
 
-/* 用户信息 */
 .user-info-row {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-/* 预设背景 */
 .preset-grid {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
@@ -674,7 +482,6 @@ onMounted(() => {
   overflow: auto;
 }
 
-/* 背景预览（置于顶部） */
 .bg-preview-wrap {
   border-radius: 12px;
   border: 1px solid #e8e8ec;
@@ -702,7 +509,6 @@ onMounted(() => {
   object-fit: cover;
 }
 
-/* 页脚预览 */
 .footer-preview {
   margin-top: 12px;
   padding: 12px;
@@ -716,106 +522,6 @@ onMounted(() => {
   color: #aeaeb2;
 }
 
-/* 图库管理 */
-.img-scroll {
-  max-height: 300px;
-  overflow-y: auto;
-}
-.img-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-.img-search-area {
-  margin-bottom: 10px;
-}
-.img-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 15px;
-}
-.img-upload-area {
-  flex-shrink: 0;
-}
-.img-upload-trigger {
-  width: 80px;
-  height: 80px;
-  border-radius: var(--radius-md);
-  border: 1.5px dashed #d4d4d8;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  cursor: pointer;
-  background: #fafafa;
-  transition: border-color 0.15s, background 0.15s;
-}
-.img-upload-trigger:hover {
-  border-color: var(--color-primary);
-  background: #f0f0ff;
-}
-.img-upload-trigger img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-.img-upload-placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  color: #aeaeb2;
-  font-size: 10px;
-  transition: color 0.15s;
-}
-.img-upload-trigger:hover .img-upload-placeholder {
-  color: var(--color-primary);
-}
-.img-card {
-  width: 80px;
-  height: 80px;
-  border-radius: var(--radius-md);
-  border: 1px solid #e8e8ec;
-  overflow: hidden;
-  background: #f5f5f7;
-  transition: transform 0.15s;
-  display: flex;
-  flex-direction: column;
-}
-.img-card:hover {
-  transform: translateY(-1px);
-}
-.img-card img {
-  width: 100%;
-  height: 48px;
-  object-fit: cover;
-  display: block;
-  flex-shrink: 0;
-}
-.img-card-actions {
-  display: flex;
-  gap: 1px;
-  padding: 1px 2px;
-  justify-content: center;
-  flex-shrink: 0;
-}
-.img-card-actions .el-button {
-  font-size: 10px;
-  padding: 0 3px;
-  height: 16px;
-}
-.img-card-name {
-  font-size: 9px;
-  padding: 0 3px 1px;
-  text-align: center;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-/* 用户管理 */
 .user-add-row {
   margin-top: 12px;
   text-align: center;

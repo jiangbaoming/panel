@@ -7,12 +7,7 @@
     <div class="main-middle">
       <div class="hero-section" v-loading="loading" element-loading-background="transparent">
         <!-- 欢迎语 -->
-        <div class="greeting">
-          <h1 class="greeting-text">{{ greetingText }}</h1>
-          <p class="time-text">{{ currentTime }}</p>
-          <p class="date-text">{{ currentDate }}</p>
-          <p v-if="settings.welcomeMessage" class="welcome-message">{{ settings.welcomeMessage }}</p>
-        </div>
+        <GreetingSection />
 
         <!-- 搜索框 -->
         <SearchBar v-model="searchQuery" :has-match="hasFilteredResults" />
@@ -74,7 +69,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useBookmarksStore } from '@/stores/bookmarks'
 import { useSettingsStore } from '@/stores/settings'
@@ -82,6 +77,7 @@ import { Plus } from '@element-plus/icons-vue'
 import draggable from 'vuedraggable'
 import { ElMessage } from 'element-plus'
 import TopBar from '@/components/TopBar.vue'
+import GreetingSection from '@/components/GreetingSection.vue'
 import SearchBar from '@/components/SearchBar.vue'
 import PinnedBar from '@/components/PinnedBar.vue'
 import GroupSection from '@/components/GroupSection.vue'
@@ -110,32 +106,6 @@ const hasFilteredResults = computed(() => {
   )
 })
 
-// 实时时钟
-const now = ref(new Date())
-let timer = null
-
-const greetingText = computed(() => {
-  const hour = now.value.getHours()
-  const name = auth.user?.username || ''
-  if (hour < 6) return `夜深了，${name}`
-  if (hour < 9) return `早上好，${name}`
-  if (hour < 12) return `上午好，${name}`
-  if (hour < 14) return `中午好，${name}`
-  if (hour < 18) return `下午好，${name}`
-  if (hour < 22) return `晚上好，${name}`
-  return `夜深了，${name}`
-})
-
-const currentTime = computed(() => {
-  return now.value.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
-})
-
-const currentDate = computed(() => {
-  const weekDays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六']
-  const d = now.value
-  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 ${weekDays[d.getDay()]}`
-})
-
 // 搜索过滤：匹配书签名称或 URL
 const filteredGroups = computed(() => {
   const q = searchQuery.value.trim().toLowerCase()
@@ -162,9 +132,6 @@ const bgStyle = computed(() => {
 })
 
 onMounted(async () => {
-  // 启动时钟
-  timer = setInterval(() => { now.value = new Date() }, 1000)
-  // 加载数据
   try {
     await Promise.all([
       bookmarks.fetchAll(),
@@ -175,10 +142,6 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
-})
-
-onUnmounted(() => {
-  clearInterval(timer)
 })
 
 // 分组操作
@@ -195,17 +158,13 @@ async function onGroupDragEnd() {
   const ids = bookmarks.groups.map(g => String(g.id))
   try {
     await bookmarks.sortGroups(ids)
-  } catch (e) {
-    ElMessage.error('排序保存失败')
-  }
+  } catch {}
 }
 
 async function onBookmarksReordered(payload) {
   try {
     await bookmarks.sortBookmarks(payload.groupId, payload.ids)
-  } catch (e) {
-    ElMessage.error('排序保存失败')
-  }
+  } catch {}
 }
 
 </script>
@@ -251,77 +210,12 @@ async function onBookmarksReordered(payload) {
   padding-bottom: 60px;
 }
 
-/* 欢迎语 + 时间 */
-.greeting {
-  text-align: center;
-  padding: 80px 0 40px;
-  animation: greetingFadeIn 0.6s ease;
-}
-
-@keyframes greetingFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.greeting-text {
-  font-size: 32px;
-  font-weight: 700;
-  color: var(--color-text-primary);
-  margin: 0 0 12px;
-  letter-spacing: 1px;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
-}
-
-.time-text {
-  font-size: 56px;
-  font-weight: 300;
-  color: var(--color-text-primary);
-  margin: 0 0 4px;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 2px;
-  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.3);
-}
-
-.date-text {
-  font-size: 15px;
-  color: var(--color-text-secondary);
-  margin: 0;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
-}
-
-.welcome-message {
-  font-size: 14px;
-  color: var(--color-text-secondary);
-  margin: 12px 0 0;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
-  font-style: italic;
-  opacity: 0.8;
-}
-
 @media (max-width: 768px) {
   .main-middle {
     padding: 0 12px;
   }
   .hero-section {
     padding-bottom: 30px;
-  }
-  .greeting {
-    padding: 40px 0 24px;
-  }
-  .greeting-text {
-    font-size: 22px;
-  }
-  .time-text {
-    font-size: 36px;
-  }
-  .date-text {
-    font-size: 13px;
   }
   .edit-toolbar {
     padding: 0 12px;

@@ -1,5 +1,7 @@
 package model
 
+import "time"
+
 // 用户
 type User struct {
 	ID       int    `json:"id" gorm:"primaryKey;autoIncrement"`
@@ -56,22 +58,22 @@ type PinnedBookmark struct {
 
 // 图片
 type ImageItem struct {
-	ID           int    `json:"id" gorm:"primaryKey;autoIncrement"`
-	Filename     string `json:"filename" gorm:"not null"`
-	OriginalName string `json:"original_name" gorm:"not null"`
-	Category     string `json:"category" gorm:"default:icon;index"`
-	URL          string `json:"url" gorm:"-:all"`
-	CreatedAt    string `json:"created_at" gorm:"autoCreateTime"`
+	ID           int       `json:"id" gorm:"primaryKey;autoIncrement"`
+	Filename     string    `json:"filename" gorm:"not null"`
+	OriginalName string    `json:"original_name" gorm:"not null"`
+	Category     string    `json:"category" gorm:"default:icon;index"`
+	URL          string    `json:"url" gorm:"-:all"`
+	CreatedAt    time.Time `json:"created_at" gorm:"autoCreateTime"`
 }
 
 // 图片表结构（用于 GORM 操作）
 type Image struct {
-	ID           int    `gorm:"primaryKey;autoIncrement"`
-	Filename     string `gorm:"not null"`
-	OriginalName string `gorm:"not null"`
-	Category     string `gorm:"default:icon;index"`
-	UploadedBy   int    `gorm:"default:1"`
-	CreatedAt    string `gorm:"autoCreateTime"`
+	ID           int       `gorm:"primaryKey;autoIncrement"`
+	Filename     string    `gorm:"not null"`
+	OriginalName string    `gorm:"not null"`
+	Category     string    `gorm:"default:icon;index"`
+	UploadedBy   int       `gorm:"default:1"`
+	CreatedAt    time.Time `gorm:"autoCreateTime"`
 }
 
 func (ImageItem) TableName() string {

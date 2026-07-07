@@ -4,19 +4,18 @@ import (
 	"net/http"
 	"panel/db"
 	"panel/model"
+	"panel/response"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
 
-// 获取用户设置
 func GetSettings(c *gin.Context) {
 	userID, _ := strconv.Atoi(c.Param("userId"))
 
 	var settings model.UserSettings
 	err := db.DB.Where("user_id = ?", userID).First(&settings).Error
 	if err != nil {
-		// 不存在则创建
 		newSettings := model.UserSettings{
 			UserID:      userID,
 			BgImage:     "",
@@ -29,10 +28,9 @@ func GetSettings(c *gin.Context) {
 		settings = newSettings
 	}
 
-	c.JSON(http.StatusOK, settings)
+	response.OK(c, settings)
 }
 
-// 更新用户设置
 func UpdateSettings(c *gin.Context) {
 	userID, _ := strconv.Atoi(c.Param("userId"))
 
@@ -46,16 +44,14 @@ func UpdateSettings(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "参数错误"})
+		response.Error(c, http.StatusBadRequest, "参数错误", nil)
 		return
 	}
 
-	// 检查是否存在
 	var settings model.UserSettings
 	err := db.DB.Where("user_id = ?", userID).First(&settings).Error
 
 	if err != nil {
-		// 插入
 		settings = model.UserSettings{
 			UserID:         userID,
 			BgImage:        req.BgImage,
@@ -67,7 +63,6 @@ func UpdateSettings(c *gin.Context) {
 		}
 		db.DB.Create(&settings)
 	} else {
-		// 更新
 		updates := map[string]interface{}{}
 		if req.BgImage != "" {
 			updates["bg_image"] = req.BgImage
@@ -92,7 +87,6 @@ func UpdateSettings(c *gin.Context) {
 		}
 	}
 
-	// 返回最新设置
 	db.DB.Where("user_id = ?", userID).First(&settings)
-	c.JSON(http.StatusOK, settings)
+	response.OK(c, settings)
 }

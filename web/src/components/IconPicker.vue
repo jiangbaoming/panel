@@ -1,15 +1,33 @@
 <template>
-  <div class="icon-picker">
+  <div class="icon-picker" :class="{ 'icon-picker--manage': mode === 'manage' }">
 
-    <!-- 模式切换（背景图模式下隐藏 Emoji） -->
-    <div class="icon-tabs">
-      <el-button v-if="props.category !== 'bg'" size="small" :type="activeTab === 'emoji' ? 'primary' : 'default'" text @click="switchTab('emoji')">Emoji</el-button>
+    <!-- 管理模式：分类切换 + 操作按钮 -->
+    <div v-if="mode === 'manage'" class="manage-toolbar">
+      <el-radio-group v-model="manageCategory" @change="onManageCategoryChange">
+        <el-radio-button value="icon">图标</el-radio-button>
+        <el-radio-button value="bg">背景图</el-radio-button>
+      </el-radio-group>
+      <div style="flex:1" />
+      <el-upload
+        :auto-upload="false"
+        :show-file-list="false"
+        accept=".zip"
+        :on-change="handleZipUpload"
+      >
+        <el-button :icon="FolderOpened" size="small">上传 ZIP 包</el-button>
+      </el-upload>
+      <el-button :icon="Delete" size="small" type="danger" text @click="handleClearCategory">清空全部</el-button>
+    </div>
+
+    <!-- 选择模式：Emoji / 图库 / URL 页签切换 -->
+    <div v-if="mode === 'pick'" class="icon-tabs">
+      <el-button v-if="props.category !== 'bg' && !props.hideEmoji" size="small" :type="activeTab === 'emoji' ? 'primary' : 'default'" text @click="switchTab('emoji')">Emoji</el-button>
       <el-button size="small" :type="activeTab === 'gallery' ? 'primary' : 'default'" text @click="switchTab('gallery')">图库</el-button>
-      <el-button size="small" :type="activeTab === 'url' ? 'primary' : 'default'" text @click="switchTab('url')">URL</el-button>
+      <el-button v-if="mode === 'pick'" size="small" :type="activeTab === 'url' ? 'primary' : 'default'" text @click="switchTab('url')">URL</el-button>
     </div>
 
     <!-- Emoji 选择 -->
-    <div v-if="activeTab === 'emoji'" class="emoji-grid">
+    <div v-if="mode === 'pick' && activeTab === 'emoji'" class="emoji-grid">
       <button
         v-for="emoji in emojiList" :key="emoji"
         type="button" class="emoji-item"
@@ -18,8 +36,8 @@
       >{{ emoji }}</button>
     </div>
 
-    <!-- 图库选择（内嵌） -->
-    <div v-if="activeTab === 'gallery'" class="gallery-tab">
+    <!-- 图库（选择模式 + 管理模式共用） -->
+    <div v-if="mode === 'manage' || activeTab === 'gallery'" class="gallery-tab">
       <div class="gal-toolbar">
         <el-input
           v-model="searchQuery" placeholder="搜索..."
@@ -31,20 +49,26 @@
         <el-upload :auto-upload="false" :show-file-list="false" accept="image/*" :on-change="handleUpload">
           <div class="gal-upload-trigger">
             <el-icon :size="22"><Upload /></el-icon>
+            <span v-if="mode === 'manage'" class="gal-upload-label">上传图片</span>
           </div>
         </el-upload>
         <div
           v-for="img in images" :key="img.id"
-          class="gal-item" :class="{ selected: modelValue === img.url }"
-          @click="emit('update:modelValue', img.url)"
+          class="gal-item"
+          :class="{ selected: mode === 'pick' && modelValue === img.url }"
+          @click="mode === 'pick' && emit('update:modelValue', img.url)"
         >
           <img :src="img.url" loading="lazy" />
+          <template v-if="mode === 'manage'">
+            <button class="gal-item-del" @click.stop="removeImg(img)"><el-icon :size="12"><Close /></el-icon></button>
+            <div class="gal-item-name">{{ img.original_name }}</div>
+          </template>
         </div>
       </div>
     </div>
 
     <!-- URL 输入 -->
-    <div v-if="activeTab === 'url'" class="url-tab">
+    <div v-if="mode === 'pick' && activeTab === 'url'" class="url-tab">
       <el-input v-model="urlInput" placeholder="输入图标图片 URL" size="small" clearable @input="urlPreview = ''">
         <template #append>
           <el-button @click="confirmUrl">确认</el-button>
@@ -57,18 +81,20 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { Upload, Search } from '@element-plus/icons-vue'
-import { getImages, uploadImage } from '@/api'
-import { ElMessage } from 'element-plus'
+import { Upload, Search, FolderOpened, Delete, Close } from '@element-plus/icons-vue'
+import { getImages, uploadImage, uploadZip, deleteImage, clearImages } from '@/api'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 const props = defineProps({
   modelValue: { type: String, default: '' },
   defaultIcon: { type: String, default: '📁' },
-  category: { type: String, default: 'icon' }
+  category: { type: String, default: 'icon' },
+  hideEmoji: { type: Boolean, default: false },
+  mode: { type: String, default: 'pick' }
 })
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue', 'refresh'])
 
-const activeTab = ref('emoji')
+const activeTab = ref(props.hideEmoji ? 'gallery' : 'emoji')
 const urlInput = ref('')
 const urlPreview = ref('')
 const images = ref([])
@@ -78,6 +104,7 @@ const page = ref(1)
 const pageSize = ref(24)
 const total = ref(0)
 const hasMore = ref(true)
+const manageCategory = ref('icon')
 let searchTimer = null
 
 function isImageUrl(str) {
@@ -92,7 +119,31 @@ const emojiList = [
   '🐙', '🔍', '🔎', '🌐', '💡', '📺', '📱', '📕',
   '🎵', '🎶', '🎥', '▶️', '🤖', '🧠', '📖', '💻',
   '📦', '👤', '⭐', '🔥', '💎', '🎮', '✉️', '🔔',
-  '⚡', '🛡️', '🎈', '📌', '🧩', '🎪', '🏆', '🎭'
+  '⚡', '🛡️', '🎈', '📌', '🧩', '🎪', '🏆', '🎭',
+  '🏠', '🏢', '🏖️', '🏕️', '🏔️', '🏗️', '🏡', '🏜️',
+  '🎄', '🎃', '🎁', '🎀', '🎉', '🎊', '🎋', '🎍',
+  '🐶', '🐱', '🦊', '🐼', '🐨', '🐯', '🦁', '🐸',
+  '🐧', '🐤', '🦄', '🐝', '🐞', '🦋', '🐠', '🐬',
+  '🌈', '🌟', '💫', '⭐', '🌙', '☀️', '⛅', '🌧️',
+  '🌊', '🔥', '💧', '🌿', '🍀', '🌻', '🌹', '🌸',
+  '🌺', '🍎', '🍊', '🍋', '🍉', '🍇', '🍒', '🍕',
+  '🎧', '🎤', '🎸', '🎹', '🎺', '🎻', '🥁', '🎷',
+  '⚽', '🏀', '🏈', '⚾', '🎾', '🏐', '🎱', '🏓',
+  '🚗', '🚲', '✈️', '🚢', '🚁', '🛸', '🚂', '🚌',
+  '🔑', '🔒', '🔓', '🔨', '🔧', '🔩', '🔪', '💣',
+  '💊', '💉', '🩺', '🩹', '🧬', '🔬', '🔭', '📡',
+  '❤️', '💙', '💜', '💛', '🧡', '🖤', '🤍', '🤎',
+  '💯', '✅', '❌', '➕', '➖', '❓', '❗', '💤',
+  '🕐', '🕑', '🕒', '🕓', '🕔', '🕕', '🕖', '🕗',
+  '♻️', '🔄', '🔃', '↗️', '⬆️', '⬇️', '⏩', '⏪',
+  '🎓', '🏫', '📚', '📐', '📏', '📎', '🖇️', '📌',
+  '🗂️', '🗃️', '🗄️', '🗑️', '🖊️', '🖋️', '🖌️', '🖍️',
+  '💼', '💰', '💳', '💵', '💴', '💶', '💷', '🏦',
+  '📈', '📉', '📊', '📋', '📌', '📎', '🖇️', '🖊️',
+  '🍔', '🍟', '🍕', '🌭', '🍿', '🧃', '🍩', '🍪',
+  '🎮', '🕹️', '🎲', '🎯', '🧩', '♟️', '🎰', '🎳',
+  '🌍', '🌎', '🌏', '🗺️', '🏴', '🏳️', '🏳️‍🌈', '🇨🇳',
+  '🔇', '🔈', '🔉', '🔊', '📢', '📣', '📯', '🔔',
 ]
 
 function switchTab(tab) {
@@ -105,8 +156,14 @@ function switchTab(tab) {
 }
 
 onMounted(() => {
+  if (props.mode === 'manage') {
+    fetchImages()
+    return
+  }
   if (props.category === 'bg') {
     activeTab.value = 'gallery'
+  }
+  if (activeTab.value === 'gallery') {
     fetchImages()
   }
 })
@@ -124,7 +181,8 @@ function onSearchInput() {
 async function fetchImages(append = false) {
   loading.value = true
   try {
-    const res = await getImages({ category: props.category, q: searchQuery.value || undefined, page: page.value, pageSize: pageSize.value })
+    const cat = props.mode === 'manage' ? manageCategory.value : props.category
+    const res = await getImages({ category: cat, q: searchQuery.value || undefined, page: page.value, pageSize: pageSize.value })
     if (append) {
       images.value = [...images.value, ...(res.data || [])]
     } else {
@@ -146,12 +204,54 @@ function onGalScroll(e) {
 async function handleUpload(file) {
   const formData = new FormData()
   formData.append('file', file.raw || file)
-  formData.append('category', props.category)
+  const cat = props.mode === 'manage' ? manageCategory.value : props.category
+  formData.append('category', cat)
   try {
     await uploadImage(formData)
     ElMessage.success('上传成功')
+    page.value = 1
     fetchImages()
-  } catch (e) { ElMessage.error('上传失败') }
+  } catch {}
+}
+
+async function handleZipUpload(file) {
+  const formData = new FormData()
+  formData.append('file', file.raw || file)
+  formData.append('category', manageCategory.value)
+  try {
+    const res = await uploadZip(formData)
+    ElMessage.success(`导入 ${res.imported || 0} 个文件`)
+    page.value = 1
+    fetchImages()
+  } catch {}
+}
+
+async function removeImg(img) {
+  try {
+    await ElMessageBox.confirm(`确定删除「${img.original_name}」？`, '提示', { type: 'warning' })
+    await deleteImage(img.id)
+    ElMessage.success('已删除')
+    fetchImages()
+  } catch {}
+}
+
+async function handleClearCategory() {
+  const label = manageCategory.value === 'icon' ? '图标' : '背景图'
+  try {
+    await ElMessageBox.confirm(
+      `确定清空所有「${label}」图片？此操作不可恢复。`,
+      '清空确认',
+      { type: 'warning', confirmButtonText: '确认清空', cancelButtonText: '取消' }
+    )
+    await clearImages(manageCategory.value)
+    ElMessage.success(`已清空所有${label}`)
+    fetchImages()
+  } catch {}
+}
+
+function onManageCategoryChange() {
+  page.value = 1
+  fetchImages()
 }
 </script>
 
@@ -310,5 +410,88 @@ async function handleUpload(file) {
   border-radius: var(--radius-sm);
   border: 1px solid #e8e8ec;
   background: #f5f5f7;
+}
+
+/* 管理模式 */
+.icon-picker--manage {
+  height: 390px;
+}
+.manage-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding: 8px 8px 0;
+}
+.gal-upload-label {
+  display: none;
+}
+.icon-picker--manage .gal-upload-trigger {
+  width: 80px;
+  height: 80px;
+  flex-direction: column;
+  gap: 4px;
+}
+.icon-picker--manage .gal-upload-label {
+  display: block;
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+}
+.icon-picker--manage .gal-item {
+  position: relative;
+  width: 80px;
+  height: auto;
+  min-height: 80px;
+  border: 1px solid #e8e8ec;
+  cursor: default;
+  flex-direction: column;
+  overflow: visible;
+}
+.icon-picker--manage .gal-item img {
+  width: 100%;
+  height: 56px;
+  object-fit: cover;
+  display: block;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+.icon-picker--manage .gal-item:hover {
+  border-color: var(--color-primary);
+  transform: none;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.gal-item-del {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 80, 80, 0.9);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 2;
+  padding: 0;
+  line-height: 1;
+}
+.gal-item:hover .gal-item-del {
+  opacity: 1;
+}
+.gal-item-name {
+  font-size: 11px;
+  color: #999;
+  text-align: center;
+  padding: 2px 4px 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 </style>

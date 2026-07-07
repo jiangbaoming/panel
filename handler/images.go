@@ -10,6 +10,7 @@ import (
 	"panel/config"
 	"panel/db"
 	"panel/model"
+	"panel/response"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -18,11 +19,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// 上传图片
 func UploadImage(c *gin.Context) {
 	file, err := c.FormFile("file")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "请选择文件"})
+		response.Error(c, http.StatusBadRequest, "请选择文件", nil)
 		return
 	}
 
@@ -31,28 +31,24 @@ func UploadImage(c *gin.Context) {
 		category = "icon"
 	}
 
-	// 验证文件类型
 	ext := strings.ToLower(filepath.Ext(file.Filename))
 	allowedExts := map[string]bool{
 		".png": true, ".jpg": true, ".jpeg": true,
 		".gif": true, ".webp": true, ".svg": true, ".ico": true,
 	}
 	if !allowedExts[ext] {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "不支持的文件格式"})
+		response.Error(c, http.StatusBadRequest, "不支持的文件格式", nil)
 		return
 	}
 
-	// 生成文件名
 	filename := fmt.Sprintf("%d-%s%s", time.Now().UnixNano()/1e6, randomString(6), ext)
 	dest := filepath.Join(config.UploadDir, filename)
 
-	// 保存文件
 	if err := c.SaveUploadedFile(file, dest); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "保存文件失败"})
+		response.Error(c, http.StatusInternalServerError, "保存文件失败", err)
 		return
 	}
 
-	// 写入数据库
 	image := model.Image{
 		Filename:     filename,
 		OriginalName: file.Filename,
@@ -60,11 +56,11 @@ func UploadImage(c *gin.Context) {
 	}
 	err = db.DB.Create(&image).Error
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "保存记录失败"})
+		response.Error(c, http.StatusInternalServerError, "保存记录失败", err)
 		return
 	}
 
-	c.JSON(http.StatusOK, model.ImageItem{
+	response.OK(c, model.ImageItem{
 		ID:           image.ID,
 		Filename:     filename,
 		OriginalName: file.Filename,
@@ -73,7 +69,6 @@ func UploadImage(c *gin.Context) {
 	})
 }
 
-// 获取图片列表
 func GetImages(c *gin.Context) {
 	category := c.Query("category")
 	q := c.Query("q")
@@ -92,7 +87,6 @@ func GetImages(c *gin.Context) {
 		pageSize = 200
 	}
 
-	// 构建查询
 	query := db.DB.Model(&model.Image{})
 	if category != "" {
 		query = query.Where("category = ?", category)
@@ -101,22 +95,19 @@ func GetImages(c *gin.Context) {
 		query = query.Where("original_name LIKE ?", "%"+q+"%")
 	}
 
-	// 查询总数
 	var total int64
 	query.Count(&total)
 
-	// 查询数据
 	var images []model.Image
 	err := query.Order("created_at DESC").
 		Limit(pageSize).
 		Offset((page - 1) * pageSize).
 		Find(&images).Error
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "查询失败"})
+		response.Error(c, http.StatusInternalServerError, "查询失败", err)
 		return
 	}
 
-	// 转换为响应格式
 	imageItems := make([]model.ImageItem, len(images))
 	for i, img := range images {
 		imageItems[i] = model.ImageItem{
@@ -129,7 +120,7 @@ func GetImages(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusOK, model.ImageListResponse{
+	response.OK(c, model.ImageListResponse{
 		Data:     imageItems,
 		Total:    int(total),
 		Page:     page,
@@ -137,17 +128,16 @@ func GetImages(c *gin.Context) {
 	})
 }
 
-// 上传 ZIP 压缩包
 func UploadZip(c *gin.Context) {
 	file, err := c.FormFile("file")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "请选择文件"})
+		response.Error(c, http.StatusBadRequest, "请选择文件", nil)
 		return
 	}
 
 	ext := strings.ToLower(filepath.Ext(file.Filename))
 	if ext != ".zip" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "仅支持 .zip 压缩包"})
+		response.Error(c, http.StatusBadRequest, "仅支持 .zip 压缩包", nil)
 		return
 	}
 
@@ -156,18 +146,16 @@ func UploadZip(c *gin.Context) {
 		category = "icon"
 	}
 
-	// 保存临时文件
 	tempPath := filepath.Join(config.UploadDir, "temp_"+file.Filename)
 	if err := c.SaveUploadedFile(file, tempPath); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "保存文件失败"})
+		response.Error(c, http.StatusInternalServerError, "保存文件失败", err)
 		return
 	}
 	defer os.Remove(tempPath)
 
-	// 解压
 	r, err := zip.OpenReader(tempPath)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "解压失败: " + err.Error()})
+		response.Error(c, http.StatusBadRequest, "解压失败: "+err.Error(), nil)
 		return
 	}
 	defer r.Close()
@@ -188,11 +176,9 @@ func UploadZip(c *gin.Context) {
 			continue
 		}
 
-		// 生成唯一文件名
 		filename := fmt.Sprintf("%d-%s%s", time.Now().UnixNano()/1e6, randomString(6), entryExt)
 		dest := filepath.Join(config.UploadDir, filename)
 
-		// 读取并保存
 		rc, err := f.Open()
 		if err != nil {
 			continue
@@ -212,7 +198,6 @@ func UploadZip(c *gin.Context) {
 			continue
 		}
 
-		// 写入数据库
 		image := model.Image{
 			Filename:     filename,
 			OriginalName: f.Name,
@@ -231,58 +216,50 @@ func UploadZip(c *gin.Context) {
 		})
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	response.OK(c, gin.H{
 		"imported": len(imported),
 		"images":   imported,
 	})
 }
 
-// 删除图片
 func DeleteImage(c *gin.Context) {
 	id := c.Param("id")
 
 	var image model.Image
 	err := db.DB.First(&image, id).Error
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "图片不存在"})
+		response.Error(c, http.StatusNotFound, "图片不存在", nil)
 		return
 	}
 
-	// 删除文件
 	filePath := filepath.Join(config.UploadDir, image.Filename)
 	os.Remove(filePath)
 
-	// 删除记录
 	db.DB.Delete(&image)
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	response.OK(c, gin.H{"success": true})
 }
 
-// 清空分类
 func ClearCategory(c *gin.Context) {
 	category := c.Param("category")
 
-	// 查询所有该分类的图片
 	var images []model.Image
 	err := db.DB.Where("category = ?", category).Find(&images).Error
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "查询失败"})
+		response.Error(c, http.StatusInternalServerError, "查询失败", err)
 		return
 	}
 
-	// 删除文件
 	for _, img := range images {
 		os.Remove(filepath.Join(config.UploadDir, img.Filename))
 	}
 
-	// 删除记录
 	result := db.DB.Where("category = ?", category).Delete(&model.Image{})
-	c.JSON(http.StatusOK, gin.H{
+	response.OK(c, gin.H{
 		"success": true,
 		"deleted": result.RowsAffected,
 	})
 }
 
-// 生成随机字符串
 func randomString(n int) string {
 	const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
 	b := make([]byte, n)

@@ -5,12 +5,12 @@ import (
 	"panel/db"
 	"panel/middleware"
 	"panel/model"
+	"panel/response"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 )
 
-// 登录
 func Login(c *gin.Context) {
 	var req struct {
 		Username string `json:"username" binding:"required"`
@@ -18,29 +18,29 @@ func Login(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "缺少用户名或密码"})
+		response.Error(c, http.StatusBadRequest, "缺少用户名或密码", nil)
 		return
 	}
 
 	var user model.User
 	err := db.DB.Where("username = ?", req.Username).First(&user).Error
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "用户名或密码错误"})
+		response.Error(c, http.StatusUnauthorized, "用户名或密码错误", nil)
 		return
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "用户名或密码错误"})
+		response.Error(c, http.StatusUnauthorized, "用户名或密码错误", nil)
 		return
 	}
 
 	token, err := middleware.GenerateToken(user.ID, user.Username, user.Role)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "生成令牌失败"})
+		response.Error(c, http.StatusInternalServerError, "生成令牌失败", err)
 		return
 	}
 
-	c.JSON(http.StatusOK, model.LoginResponse{
+	response.OK(c, model.LoginResponse{
 		Token:    token,
 		ID:       user.ID,
 		Username: user.Username,
@@ -49,38 +49,37 @@ func Login(c *gin.Context) {
 	})
 }
 
-// 修改密码
 func ChangePassword(c *gin.Context) {
 	var req model.ChangePasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "缺少旧密码或新密码"})
+		response.Error(c, http.StatusBadRequest, "缺少旧密码或新密码", nil)
 		return
 	}
 
 	if len(req.NewPassword) < 6 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "新密码至少 6 位"})
+		response.Error(c, http.StatusBadRequest, "新密码至少 6 位", nil)
 		return
 	}
 
 	user := middleware.GetUser(c)
 	if user == nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "未登录"})
+		response.Error(c, http.StatusUnauthorized, "未登录", nil)
 		return
 	}
 
 	var dbUser model.User
 	err := db.DB.Select("password").First(&dbUser, user.ID).Error
 	if err != nil || bcrypt.CompareHashAndPassword([]byte(dbUser.Password), []byte(req.OldPassword)) != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "旧密码错误"})
+		response.Error(c, http.StatusBadRequest, "旧密码错误", nil)
 		return
 	}
 
 	newHash, _ := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
 	err = db.DB.Model(&model.User{}).Where("id = ?", user.ID).Update("password", string(newHash)).Error
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "修改密码失败"})
+		response.Error(c, http.StatusInternalServerError, "修改密码失败", err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	response.OK(c, gin.H{"success": true})
 }

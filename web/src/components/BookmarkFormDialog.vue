@@ -17,12 +17,18 @@
       <el-form-item label="图标">
         <IconPicker v-model="form.icon" default-icon="🔗" />
       </el-form-item>
-      <el-form-item label="背景色">
-        <ColorPicker v-model="form.bg_color" />
-      </el-form-item>
-      <el-form-item label="图标背景">
-        <ColorPicker v-model="form.icon_bg" />
-      </el-form-item>
+      <el-row :gutter="16">
+        <el-col :span="12">
+          <el-form-item label="背景色">
+            <ColorPicker v-model="form.bg_color" />
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="图标背景">
+            <ColorPicker v-model="form.icon_bg" />
+          </el-form-item>
+        </el-col>
+      </el-row>
     </el-form>
     <template #footer>
       <el-button @click="dialogVisible = false">取消</el-button>
@@ -102,8 +108,6 @@ async function handleSave() {
     ElMessage.success(props.editData ? '已更新' : '已添加')
     dialogVisible.value = false
     emit('saved')
-  } catch (e) {
-    ElMessage.error(e.response?.data?.error || '保存失败')
   } finally {
     loading.value = false
   }
