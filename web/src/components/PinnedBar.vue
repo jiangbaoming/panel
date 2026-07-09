@@ -138,7 +138,13 @@ function isImageUrl(str) {
   return str && (str.startsWith("http") || str.startsWith("/uploads/"));
 }
 function openUrl(url) {
-  if (!props.editMode && url) window.open(url, "_blank");
+  if (!props.editMode && url) {
+    const a = document.createElement('a')
+    a.href = url
+    a.target = '_blank'
+    a.rel = 'noopener noreferrer'
+    a.click()
+  }
 }
 
 function openAdd() {

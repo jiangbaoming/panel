@@ -89,7 +89,12 @@ function doWebSearch() {
 }
 
 function openSearch(eng) {
-  window.open(eng.url + encodeURIComponent(searchQuery.value.trim()), '_blank')
+  const url = eng.url + encodeURIComponent(searchQuery.value.trim())
+  const a = document.createElement('a')
+  a.href = url
+  a.target = '_blank'
+  a.rel = 'noopener noreferrer'
+  a.click()
 }
 
 // Ctrl+K 聚焦

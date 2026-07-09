@@ -102,7 +102,11 @@ function handleKeydown(e) {
 
 function openItem(item) {
   if (item?.url) {
-    window.open(item.url, '_blank')
+    const a = document.createElement('a')
+    a.href = item.url
+    a.target = '_blank'
+    a.rel = 'noopener noreferrer'
+    a.click()
     close()
   }
 }

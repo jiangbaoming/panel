@@ -71,7 +71,11 @@ const iconStyle = computed(() => {
 
 function openUrl() {
   if (!props.editMode && props.bookmark.url) {
-    window.open(props.bookmark.url, '_blank')
+    const a = document.createElement('a')
+    a.href = props.bookmark.url
+    a.target = '_blank'
+    a.rel = 'noopener noreferrer'
+    a.click()
   }
 }
 </script>

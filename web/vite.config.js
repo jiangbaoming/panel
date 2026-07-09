@@ -21,8 +21,9 @@ export default defineConfig({
         target: 'http://localhost:5678',
         changeOrigin: true
       }
-    }
-  },
+    },
+    allowedHosts: ['.lovelq.top']
+   },
   build: {
     outDir: 'dist',
     rollupOptions: {
