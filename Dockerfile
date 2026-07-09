@@ -7,7 +7,8 @@ RUN npm run build
 
 FROM golang:alpine AS backend-builder
 ENV GOPROXY=https://goproxy.cn,direct
-RUN apk add --no-cache gcc musl-dev
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories \
+    && apk add --no-cache gcc musl-dev
 WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
@@ -15,7 +16,8 @@ COPY . ./
 RUN CGO_ENABLED=1 GOOS=linux go build -o /panel ./cmd/server
 
 FROM alpine:3.21
-RUN apk add --no-cache ca-certificates tzdata su-exec
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories \
+    && apk add --no-cache ca-certificates tzdata su-exec
 ENV TZ=Asia/Shanghai
 
 WORKDIR /app
