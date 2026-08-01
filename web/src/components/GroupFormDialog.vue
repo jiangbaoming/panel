@@ -23,7 +23,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useBookmarksStore } from '@/stores/bookmarks'
 import IconPicker from './IconPicker.vue'
@@ -46,6 +46,14 @@ const form = reactive({ name: '', icon: '' })
 const rules = {
   name: [{ required: true, message: '请输入分组名称', trigger: 'blur' }]
 }
+
+// 弹窗打开时回显编辑数据
+watch(() => props.visible, (v) => {
+  if (v && props.editData) {
+    form.name = props.editData.name || ''
+    form.icon = props.editData.icon || ''
+  }
+})
 
 async function handleSave() {
   const valid = await formRef.value.validate().catch(() => false)
