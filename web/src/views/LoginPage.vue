@@ -152,4 +152,11 @@ async function handleLogin() {
   text-align: center;
   margin-top: 8px;
 }
+
+/* 覆盖浏览器自动填充的背景色 */
+:deep(.el-input__inner:-webkit-autofill) {
+  -webkit-box-shadow: 0 0 0 1000px #fff inset !important;
+  -webkit-text-fill-color: #1d1d1f !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
 </style>
