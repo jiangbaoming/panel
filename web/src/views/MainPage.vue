@@ -206,7 +206,7 @@ async function onBookmarksReordered(payload) {
 
 .hero-section {
   width: 100%;
-  max-width: 1100px;
+  max-width: 1300px;
   padding-bottom: 60px;
 }
 
@@ -258,7 +258,7 @@ async function onBookmarksReordered(payload) {
   padding: 24px;
   text-align: center;
   border-top: 1px solid var(--color-border);
-  max-width: 1100px;
+  max-width: 1300px;
   width: 100%;
   margin: 0 auto;
   --color-text-primary: rgba(255, 255, 255, 0.92);

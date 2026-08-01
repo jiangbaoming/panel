@@ -126,13 +126,13 @@ function openUrl() {
 }
 
 .row-icon {
-  width: 42px;
-  height: 42px;
+  width: 48px;
+  height: 48px;
   border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
+  font-size: 26px;
   background: rgba(255, 255, 255, 0.06);
   flex-shrink: 0;
   transition: transform var(--transition-fast);
@@ -141,8 +141,8 @@ function openUrl() {
   transform: scale(1.05);
 }
 .row-icon img {
-  width: 26px;
-  height: 26px;
+  width: 30px;
+  height: 30px;
   object-fit: contain;
   border-radius: 4px;
 }
@@ -210,13 +210,13 @@ function openUrl() {
     gap: 8px;
   }
   .row-icon {
-    width: 34px;
-    height: 34px;
-    font-size: 18px;
+    width: 38px;
+    height: 38px;
+    font-size: 20px;
   }
   .row-icon img {
-    width: 22px;
-    height: 22px;
+    width: 26px;
+    height: 26px;
   }
   .row-name {
     font-size: 13px;

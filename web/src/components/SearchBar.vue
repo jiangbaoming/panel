@@ -29,8 +29,7 @@
         type="text"
         @keydown.enter="doWebSearch"
       />
-      <kbd v-if="!searchQuery" class="search-hint">Ctrl + K</kbd>
-      <el-button v-else text size="small" class="search-clear" @click="searchQuery = ''">
+      <el-button v-if="searchQuery" text size="small" class="search-clear" @click="searchQuery = ''">
         <el-icon><Close /></el-icon>
       </el-button>
     </div>
@@ -110,7 +109,7 @@ onUnmounted(() => document.removeEventListener('keydown', handleKeydown))
 
 <style scoped>
 .search-bar {
-  max-width: 600px;
+  max-width: 700px;
   margin: 0 auto 40px;
   animation: searchSlideIn 0.5s ease 0.1s both;
 }
@@ -180,17 +179,6 @@ onUnmounted(() => document.removeEventListener('keydown', handleKeydown))
   color: #aaa;
 }
 
-.search-hint {
-  font-size: 11px;
-  padding: 3px 8px;
-  background: #f5f5f7;
-  border-radius: 6px;
-  color: #999;
-  font-family: inherit;
-  flex-shrink: 0;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-}
-
 .search-clear {
   flex-shrink: 0;
   color: #999;
@@ -244,9 +232,6 @@ onUnmounted(() => document.removeEventListener('keydown', handleKeydown))
   }
   .engine-icon {
     font-size: 16px;
-  }
-  .search-hint {
-    display: none;
   }
 }
 </style>
